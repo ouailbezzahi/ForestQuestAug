@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using ForestQuest.Entities;
 
 namespace ForestQuest
 {
@@ -8,6 +9,8 @@ namespace ForestQuest
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
+
+        private Player _player;
 
         public Game1()
         {
@@ -18,8 +21,7 @@ namespace ForestQuest
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
-
+            _player = new Player(new Vector2(10, 10));
             base.Initialize();
         }
 
@@ -27,24 +29,29 @@ namespace ForestQuest
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // TODO: use this.Content to load your game content here
+            // Laad speler texture
+            _player.LoadContent(Content);
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
+            var keyboardState = Keyboard.GetState();
 
-            // TODO: Add your update logic here
+            _player.Update(keyboardState, gameTime);
 
             base.Update(gameTime);
         }
 
+
+
+
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(Color.ForestGreen);
 
-            // TODO: Add your drawing code here
+            _spriteBatch.Begin();
+            _player.Draw(_spriteBatch);
+            _spriteBatch.End();
 
             base.Draw(gameTime);
         }

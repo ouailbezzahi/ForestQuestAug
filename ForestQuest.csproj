@@ -11,6 +11,15 @@
     <ApplicationIcon>Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Content\apple.png" />
+    <None Remove="Content\coin.jpg" />
+    <None Remove="Content\healthbar.jpg" />
+    <None Remove="Content\key.jpg" />
+    <None Remove="Content\Lina.jpg" />
+    <None Remove="Content\Lina.png" />
+    <None Remove="Content\shield.jpg" />
+    <None Remove="Content\squirrel.png" />
+    <None Remove="Content\wolf.png" />
     <None Remove="Icon.ico" />
     <None Remove="Icon.bmp" />
   </ItemGroup>
