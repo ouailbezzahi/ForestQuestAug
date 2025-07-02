@@ -33,7 +33,7 @@ namespace ForestQuest.Entities
             _frameHeight = _spritesheet.Height / 4; // 4 rijen
         }
 
-        public void Update(KeyboardState keyboardState, GameTime gameTime)
+        public void Update(KeyboardState keyboardState, GameTime gameTime, Viewport viewport, int[,] backgroundTiles)
         {
             Vector2 movement = Vector2.Zero;
 
@@ -59,7 +59,55 @@ namespace ForestQuest.Entities
                 _currentRow = 3;
             }
 
-            _position += movement;
+            // Bereken nieuwe positie
+            Vector2 newPosition = _position + movement;
+
+            // Controleer op schermgrenzen (met schaal 0.2f in acht genomen)
+            float scale = 0.2f;
+            int scaledWidth = (int)(_frameWidth * scale);
+            int scaledHeight = (int)(_frameHeight * scale);
+            int screenWidth = viewport.Width;
+            int screenHeight = viewport.Height;
+
+            if (newPosition.X < 0) newPosition.X = 0;
+            if (newPosition.Y < 0) newPosition.Y = 0;
+            if (newPosition.X + scaledWidth > screenWidth) newPosition.X = screenWidth - scaledWidth;
+            if (newPosition.Y + scaledHeight > screenHeight) newPosition.Y = screenHeight - scaledHeight;
+
+            // Controleer collision met huizen (0) en bomen (1)
+            if (backgroundTiles != null)
+            {
+                int tileSize = 32;
+                int playerTileX = (int)(newPosition.X / tileSize);
+                int playerTileY = (int)(newPosition.Y / tileSize);
+
+                Rectangle playerRect = new Rectangle(
+                    (int)newPosition.X,
+                    (int)newPosition.Y,
+                    scaledWidth,
+                    scaledHeight
+                );
+
+                for (int y = 0; y < backgroundTiles.GetLength(0); y++)
+                {
+                    for (int x = 0; x < backgroundTiles.GetLength(1); x++)
+                    {
+                        if (backgroundTiles[y, x] == 0 || backgroundTiles[y, x] == 1) // Huis of boom
+                        {
+                            Rectangle tileRect = new Rectangle(x * tileSize, y * tileSize, tileSize, tileSize);
+                            if (playerRect.Intersects(tileRect))
+                            {
+                                // Corrigeer positie om collision te voorkomen
+                                if (movement.X != 0) newPosition.X = _position.X;
+                                if (movement.Y != 0) newPosition.Y = _position.Y;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update positie
+            _position = newPosition;
 
             // Animatie logica
             if (movement != Vector2.Zero)
@@ -92,7 +140,7 @@ namespace ForestQuest.Entities
             );
 
             // Pas een schaal toe om de speler kleiner te maken
-            float scale = 0.5f; // Maak de speler 50% kleiner
+            float scale = 0.2f;
 
             spriteBatch.Draw(
                 _spritesheet,
@@ -101,7 +149,7 @@ namespace ForestQuest.Entities
                 Color.White,
                 0f,
                 Vector2.Zero,
-                scale, // Schaal de speler
+                scale,
                 SpriteEffects.None,
                 0f
             );
