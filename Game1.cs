@@ -21,6 +21,9 @@ namespace ForestQuest
 
         protected override void Initialize()
         {
+            // Sta toe dat de gebruiker het venster kan vergroten/verkleinen
+            Window.AllowUserResizing = true;
+
             _player = new Player(new Vector2(10, 10));
             base.Initialize();
         }
@@ -41,9 +44,6 @@ namespace ForestQuest
 
             base.Update(gameTime);
         }
-
-
-
 
         protected override void Draw(GameTime gameTime)
         {

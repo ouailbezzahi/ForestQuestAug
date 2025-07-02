@@ -9,7 +9,7 @@ namespace ForestQuest.Entities
     {
         private Texture2D _spritesheet;
         private Vector2 _position;
-        private float _speed = 2f;
+        private float _speed = 6f;
 
         // Animatie
         private int _frameWidth; // Breedte van één frame
@@ -84,9 +84,27 @@ namespace ForestQuest.Entities
         public void Draw(SpriteBatch spriteBatch)
         {
             // Bereken de bronrechthoek voor het huidige frame
-            Rectangle sourceRectangle = new Rectangle(_currentFrame * _frameWidth, _currentRow * _frameHeight, _frameWidth, _frameHeight);
+            Rectangle sourceRectangle = new Rectangle(
+                _currentFrame * _frameWidth,
+                _currentRow * _frameHeight,
+                _frameWidth,
+                _frameHeight
+            );
 
-            spriteBatch.Draw(_spritesheet, _position, sourceRectangle, Color.White);
+            // Pas een schaal toe om de speler kleiner te maken
+            float scale = 0.5f; // Maak de speler 50% kleiner
+
+            spriteBatch.Draw(
+                _spritesheet,
+                _position,
+                sourceRectangle,
+                Color.White,
+                0f,
+                Vector2.Zero,
+                scale, // Schaal de speler
+                SpriteEffects.None,
+                0f
+            );
         }
     }
 }
