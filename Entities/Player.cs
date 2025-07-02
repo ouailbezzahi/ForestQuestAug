@@ -33,7 +33,7 @@ namespace ForestQuest.Entities
             _frameHeight = _spritesheet.Height / 4; // 4 rijen
         }
 
-        public void Update(KeyboardState keyboardState, GameTime gameTime, Viewport viewport, int[,] backgroundTiles)
+        public void Update(KeyboardState keyboardState, GameTime gameTime, Viewport viewport, int[,] backgroundTiles, int offsetX, int offsetY)
         {
             Vector2 movement = Vector2.Zero;
 
@@ -78,8 +78,8 @@ namespace ForestQuest.Entities
             if (backgroundTiles != null)
             {
                 int tileSize = 32;
-                int playerTileX = (int)(newPosition.X / tileSize);
-                int playerTileY = (int)(newPosition.Y / tileSize);
+                int playerTileX = (int)((newPosition.X - offsetX) / tileSize);
+                int playerTileY = (int)((newPosition.Y - offsetY) / tileSize);
 
                 Rectangle playerRect = new Rectangle(
                     (int)newPosition.X,
@@ -94,7 +94,13 @@ namespace ForestQuest.Entities
                     {
                         if (backgroundTiles[y, x] == 0 || backgroundTiles[y, x] == 1) // Huis of boom
                         {
-                            Rectangle tileRect = new Rectangle(x * tileSize, y * tileSize, tileSize, tileSize);
+                            Rectangle tileRect = new Rectangle(
+                                offsetX + x * tileSize,
+                                offsetY + y * tileSize,
+                                tileSize,
+                                tileSize
+                            );
+
                             if (playerRect.Intersects(tileRect))
                             {
                                 // Corrigeer positie om collision te voorkomen
@@ -140,7 +146,7 @@ namespace ForestQuest.Entities
             );
 
             // Pas een schaal toe om de speler kleiner te maken
-            float scale = 0.2f;
+            float scale = 0.17f;
 
             spriteBatch.Draw(
                 _spritesheet,

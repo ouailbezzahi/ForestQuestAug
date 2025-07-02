@@ -20,21 +20,22 @@ namespace ForestQuest
         private int[,] _backgroundTiles = new int[,]
         {
     { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-    { 2, 2, 1, 2, 2, 1, 1, 2, 1, 2, 2, 1, 2, 2, 2 },
-    { 2, 1, 2, 2, 0, 2, 1, 2, 2, 1, 0, 2, 1, 2, 2 },
-    { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2 },
-    { 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2 },
-    { 2, 2, 1, 2, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },
-    { 2, 1, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2 },
-    { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2 },
-    { 2, 1, 2, 0, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2 },
-    { 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2 },
-    { 2, 2, 1, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2 },
+    { 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2 },
+    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2 },
+    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+    { 2, 1, 1, 2, 0, 2, 2, 2, 2, 0, 2, 2, 1, 2, 2 },
+    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+    { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+    { 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 2 },
+    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
     { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 }
         };
+
 
         public Game1()
         {
@@ -58,7 +59,7 @@ namespace ForestQuest
             _grassTile = Content.Load<Texture2D>("Background/Grass/Slice 21");
 
             // Initialiseer de speler
-            _player = new Player(new Vector2(400, 300)); // Startpositie
+            _player = new Player(new Vector2(0, 0)); // Startpositie
             _player.LoadContent(Content); // Laad de speler texture
         }
 
@@ -66,8 +67,17 @@ namespace ForestQuest
         {
             var keyboardState = Keyboard.GetState();
 
-            // Update de speler met achtergrondtiles voor collision
-            _player.Update(keyboardState, gameTime, GraphicsDevice.Viewport, _backgroundTiles);
+            // Bereken de totale breedte en hoogte van de achtergrond
+            int tileSize = 32;
+            int backgroundWidth = _backgroundTiles.GetLength(1) * tileSize;
+            int backgroundHeight = _backgroundTiles.GetLength(0) * tileSize;
+
+            // Bereken de offset om de achtergrond te centreren
+            int offsetX = (GraphicsDevice.Viewport.Width - backgroundWidth) / 2;
+            int offsetY = (GraphicsDevice.Viewport.Height - backgroundHeight) / 2;
+
+            // Update de speler met de gecentreerde achtergrond
+            _player.Update(keyboardState, gameTime, GraphicsDevice.Viewport, _backgroundTiles, offsetX, offsetY);
 
             base.Update(gameTime);
         }
@@ -78,8 +88,16 @@ namespace ForestQuest
 
             _spriteBatch.Begin();
 
-            int tileSize = 32; // Halveer de tile-grootte
-            float grassScale = 2f; // Pas de schaal aan om tiles visueel te verkleinen
+            int tileSize = 32; // Tile-grootte
+            float grassScale = 2f; // Schaal voor gras
+
+            // Bereken de totale breedte en hoogte van de achtergrond
+            int backgroundWidth = _backgroundTiles.GetLength(1) * tileSize;
+            int backgroundHeight = _backgroundTiles.GetLength(0) * tileSize;
+
+            // Bereken de offset om de achtergrond te centreren
+            int offsetX = (GraphicsDevice.Viewport.Width - backgroundWidth) / 2;
+            int offsetY = (GraphicsDevice.Viewport.Height - backgroundHeight) / 2;
 
             // Eerste pass: Teken alleen gras (2)
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
@@ -88,7 +106,7 @@ namespace ForestQuest
                 {
                     if (_backgroundTiles[y, x] == 2) // Alleen gras tekenen
                     {
-                        Vector2 position = new Vector2(x * tileSize, y * tileSize);
+                        Vector2 position = new Vector2(offsetX + x * tileSize, offsetY + y * tileSize);
                         Vector2 scale = new Vector2(grassScale, grassScale);
                         _spriteBatch.Draw(
                             _grassTile,
@@ -111,7 +129,7 @@ namespace ForestQuest
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                 {
                     Texture2D tileTexture = null;
-                    Vector2 position = new Vector2(x * tileSize, y * tileSize);
+                    Vector2 position = new Vector2(offsetX + x * tileSize, offsetY + y * tileSize);
                     Vector2 scale = Vector2.One; // Standaard schaal
 
                     switch (_backgroundTiles[y, x])
