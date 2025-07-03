@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using ForestQuest.Entities;
 using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Media; // Toegevoegd voor Song en MediaPlayer
+using Microsoft.Xna.Framework.Media;
 
 namespace ForestQuest
 {
@@ -16,31 +16,44 @@ namespace ForestQuest
         private Texture2D _treeTile;
         private Texture2D _grassTile;
 
-        private Player _player; // Gebruik de Player-klasse
-
-        private Song _backgroundMusic; // Gewijzigd van SoundEffect naar Song
-        private SoundEffect _playerMoveSound; // Geluid voor spelerbeweging
-
+        private Player _player;
+        private Song _backgroundMusic;
+        private SoundEffect _playerMoveSound;
+        private SoundEffectInstance _playerMoveSoundInstance;
         private float _footstepTimer = 0f;
 
-        // Vooraf gedefinieerde achtergrond array
         private int[,] _backgroundTiles = new int[,]
         {
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-            { 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2 },
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2 },
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-            { 2, 1, 1, 2, 0, 2, 2, 2, 2, 0, 2, 2, 1, 2, 2 },
-            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-            { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-            { 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 2 },
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 }
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2 }
         };
 
         public Game1()
@@ -49,13 +62,10 @@ namespace ForestQuest
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
 
-            // Stel de resolutie in en sta resizing toe
-            _graphics.PreferredBackBufferWidth = 800; // Breedte van het venster
-            _graphics.PreferredBackBufferHeight = 600; // Hoogte van het venster
-            Window.AllowUserResizing = true; // Sta resizing toe
+            _graphics.PreferredBackBufferWidth = 800;
+            _graphics.PreferredBackBufferHeight = 600;
+            Window.AllowUserResizing = true;
         }
-
-        private SoundEffectInstance _playerMoveSoundInstance; // Instance voor voetstapgeluiden
 
         protected override void LoadContent()
         {
@@ -72,14 +82,14 @@ namespace ForestQuest
 
             // Maak een instance voor voetstapgeluiden
             _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
-            _playerMoveSoundInstance.IsLooped = false; // Voetstapgeluiden mogen niet loopen
+            _playerMoveSoundInstance.IsLooped = false;
 
             // Speel achtergrondmuziek af met MediaPlayer
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
             // Initialiseer de speler
-            _player = new Player(new Vector2(0, 0));
+            _player = new Player(new Vector2(15 * 32, 15 * 32)); // Start in het midden van de map
             _player.LoadContent(Content);
         }
 
@@ -87,20 +97,11 @@ namespace ForestQuest
         {
             var keyboardState = Keyboard.GetState();
 
-            // Bereken de totale breedte en hoogte van de achtergrond
-            int tileSize = 32;
-            int backgroundWidth = _backgroundTiles.GetLength(1) * tileSize;
-            int backgroundHeight = _backgroundTiles.GetLength(0) * tileSize;
-
-            // Bereken de offset om de achtergrond te centreren
-            int offsetX = (GraphicsDevice.Viewport.Width - backgroundWidth) / 2;
-            int offsetY = (GraphicsDevice.Viewport.Height - backgroundHeight) / 2;
-
-            // Update de speler met de gecentreerde achtergrond
-            _player.Update(keyboardState, gameTime, GraphicsDevice.Viewport, _backgroundTiles, offsetX, offsetY);
+            // Update de speler
+            _player.Update(keyboardState, gameTime, GraphicsDevice.Viewport, _backgroundTiles);
 
             // Timer voor voetstapgeluiden
-            const float footstepInterval = 0.3f; // Interval tussen voetstapgeluiden in seconden
+            const float footstepInterval = 0.3f;
             _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             // Controleer of de speler beweegt
@@ -109,15 +110,14 @@ namespace ForestQuest
 
             if (isMoving && _footstepTimer >= footstepInterval)
             {
-                if (_playerMoveSoundInstance.State != SoundState.Playing) // Controleer of het geluid niet al speelt
+                if (_playerMoveSoundInstance.State != SoundState.Playing)
                 {
                     _playerMoveSoundInstance.Play();
                 }
-                _footstepTimer = 0f; // Reset de timer
+                _footstepTimer = 0f;
             }
             else if (!isMoving && _playerMoveSoundInstance.State == SoundState.Playing)
             {
-                // Stop het geluid als de speler niet beweegt
                 _playerMoveSoundInstance.Stop();
             }
 
@@ -128,27 +128,20 @@ namespace ForestQuest
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            _spriteBatch.Begin();
+            // Gebruik de camera-transformatiegematrix van de speler
+            _spriteBatch.Begin(transformMatrix: _player.CameraTransform);
 
-            int tileSize = 32; // Tile-grootte
-            float grassScale = 2f; // Schaal voor gras
-
-            // Bereken de totale breedte en hoogte van de achtergrond
-            int backgroundWidth = _backgroundTiles.GetLength(1) * tileSize;
-            int backgroundHeight = _backgroundTiles.GetLength(0) * tileSize;
-
-            // Bereken de offset om de achtergrond te centreren
-            int offsetX = (GraphicsDevice.Viewport.Width - backgroundWidth) / 2;
-            int offsetY = (GraphicsDevice.Viewport.Height - backgroundHeight) / 2;
+            int tileSize = 32;
+            float grassScale = 2f;
 
             // Eerste pass: Teken alleen gras (2)
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
             {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                 {
-                    if (_backgroundTiles[y, x] == 2) // Alleen gras tekenen
+                    if (_backgroundTiles[y, x] == 2)
                     {
-                        Vector2 position = new Vector2(offsetX + x * tileSize, offsetY + y * tileSize);
+                        Vector2 position = new Vector2(x * tileSize, y * tileSize);
                         Vector2 scale = new Vector2(grassScale, grassScale);
                         _spriteBatch.Draw(
                             _grassTile,
@@ -171,8 +164,8 @@ namespace ForestQuest
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                 {
                     Texture2D tileTexture = null;
-                    Vector2 position = new Vector2(offsetX + x * tileSize, offsetY + y * tileSize);
-                    Vector2 scale = Vector2.One; // Standaard schaal
+                    Vector2 position = new Vector2(x * tileSize, y * tileSize);
+                    Vector2 scale = Vector2.One;
 
                     switch (_backgroundTiles[y, x])
                     {
