@@ -2,6 +2,8 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using ForestQuest.Entities;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Media; // Toegevoegd voor Song en MediaPlayer
 
 namespace ForestQuest
 {
@@ -16,26 +18,30 @@ namespace ForestQuest
 
         private Player _player; // Gebruik de Player-klasse
 
+        private Song _backgroundMusic; // Gewijzigd van SoundEffect naar Song
+        private SoundEffect _playerMoveSound; // Geluid voor spelerbeweging
+
+        private float _footstepTimer = 0f;
+
         // Vooraf gedefinieerde achtergrond array
         private int[,] _backgroundTiles = new int[,]
         {
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-    { 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-    { 2, 1, 1, 2, 0, 2, 2, 2, 2, 0, 2, 2, 1, 2, 2 },
-    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-    { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
-    { 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
-    { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 }
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 1, 1, 2, 0, 2, 2, 2, 2, 0, 2, 2, 1, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 },
+            { 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },
+            { 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 }
         };
-
 
         public Game1()
         {
@@ -49,6 +55,8 @@ namespace ForestQuest
             Window.AllowUserResizing = true; // Sta resizing toe
         }
 
+        private SoundEffectInstance _playerMoveSoundInstance; // Instance voor voetstapgeluiden
+
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -58,9 +66,21 @@ namespace ForestQuest
             _treeTile = Content.Load<Texture2D>("Background/Tree/Slice 12");
             _grassTile = Content.Load<Texture2D>("Background/Grass/Slice 21");
 
+            // Laad audio
+            _backgroundMusic = Content.Load<Song>("Audio/background_music");
+            _playerMoveSound = Content.Load<SoundEffect>("Audio/footsteps");
+
+            // Maak een instance voor voetstapgeluiden
+            _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
+            _playerMoveSoundInstance.IsLooped = false; // Voetstapgeluiden mogen niet loopen
+
+            // Speel achtergrondmuziek af met MediaPlayer
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Play(_backgroundMusic);
+
             // Initialiseer de speler
-            _player = new Player(new Vector2(0, 0)); // Startpositie
-            _player.LoadContent(Content); // Laad de speler texture
+            _player = new Player(new Vector2(0, 0));
+            _player.LoadContent(Content);
         }
 
         protected override void Update(GameTime gameTime)
@@ -78,6 +98,28 @@ namespace ForestQuest
 
             // Update de speler met de gecentreerde achtergrond
             _player.Update(keyboardState, gameTime, GraphicsDevice.Viewport, _backgroundTiles, offsetX, offsetY);
+
+            // Timer voor voetstapgeluiden
+            const float footstepInterval = 0.3f; // Interval tussen voetstapgeluiden in seconden
+            _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Controleer of de speler beweegt
+            bool isMoving = keyboardState.IsKeyDown(Keys.Z) || keyboardState.IsKeyDown(Keys.Q) ||
+                            keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.D);
+
+            if (isMoving && _footstepTimer >= footstepInterval)
+            {
+                if (_playerMoveSoundInstance.State != SoundState.Playing) // Controleer of het geluid niet al speelt
+                {
+                    _playerMoveSoundInstance.Play();
+                }
+                _footstepTimer = 0f; // Reset de timer
+            }
+            else if (!isMoving && _playerMoveSoundInstance.State == SoundState.Playing)
+            {
+                // Stop het geluid als de speler niet beweegt
+                _playerMoveSoundInstance.Stop();
+            }
 
             base.Update(gameTime);
         }

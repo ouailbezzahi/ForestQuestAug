@@ -12,6 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Content\apple.png" />
+    <None Remove="Content\Audio\footsteps.mp3" />
     <None Remove="Content\coin.jpg" />
     <None Remove="Content\healthbar.jpg" />
     <None Remove="Content\key.jpg" />

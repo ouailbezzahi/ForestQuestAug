@@ -13,6 +13,18 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin Audio/background_music.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/background_music.mp3
+
+#begin Audio/footsteps.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/footsteps.wav
+
 #begin Background/Cave Tiles/Slice 113.png
 /importer:TextureImporter
 /processor:TextureProcessor
