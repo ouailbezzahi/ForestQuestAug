@@ -22,6 +22,8 @@ namespace ForestQuest.State
         private bool _isMultiplayer;
         private bool _isPaused = false;
         private PauseMenu _pauseMenu;
+        private OptionsMenu _optionsMenu;
+        private bool _showingOptions = false;
 
         private int[,] _backgroundTiles = new int[,]
         {
@@ -87,6 +89,7 @@ namespace ForestQuest.State
             _player.LoadContent(_content);
 
             _pauseMenu = new PauseMenu(_content, _graphicsDevice);
+            _optionsMenu = new OptionsMenu(_content, _graphicsDevice);
         }
 
         public override void Update(GameTime gameTime)
@@ -99,7 +102,7 @@ namespace ForestQuest.State
                 _isPaused = true;
                 return;
             }
-            else if (_isPaused && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
+            else if (_isPaused && !_showingOptions && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
             {
                 _isPaused = false;
                 return;
@@ -107,6 +110,19 @@ namespace ForestQuest.State
 
             if (_isPaused)
             {
+                if (_showingOptions)
+                {
+                    // Zet volume van muziek en SFX op basis van sliders
+                    MediaPlayer.Volume = _optionsMenu.SoundValue / 100f;
+                    _playerMoveSoundInstance.Volume = _optionsMenu.SFXValue / 100f;
+
+                    bool closeOptions = _optionsMenu.Update(_graphicsDevice);
+                    if (closeOptions)
+                    {
+                        _showingOptions = false;
+                    }
+                    return;
+                }
                 int option = _pauseMenu.Update();
                 if (option == 0) // Resume
                 {
@@ -120,7 +136,7 @@ namespace ForestQuest.State
                 }
                 else if (option == 2) // Options
                 {
-                    // Nog geen actie
+                    _showingOptions = true;
                 }
                 else if (option == 3) // Quit
                 {
@@ -240,7 +256,14 @@ namespace ForestQuest.State
             if (_isPaused)
             {
                 spriteBatch.Begin();
-                _pauseMenu.Draw(spriteBatch, _graphicsDevice);
+                if (_showingOptions)
+                {
+                    _optionsMenu.Draw(spriteBatch, _graphicsDevice);
+                }
+                else
+                {
+                    _pauseMenu.Draw(spriteBatch, _graphicsDevice);
+                }
                 spriteBatch.End();
             }
         }

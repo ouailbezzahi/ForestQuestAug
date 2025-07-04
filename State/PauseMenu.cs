@@ -114,11 +114,34 @@ namespace ForestQuest.State
             Vector2 titleSize = _font.MeasureString(title);
             spriteBatch.DrawString(_font, title, new Vector2(popupX + (popupWidth - titleSize.X) / 2, popupY + 20), Color.White);
 
-            // Opties
+            // Opties als buttons (zelfde stijl als hoofdmenu)
+            MouseState mouse = Mouse.GetState();
+            Point mousePos = mouse.Position;
             for (int i = 0; i < _options.Length; i++)
             {
-                Color color = (_selectedIndex == i) ? Color.Yellow : Color.White;
-                spriteBatch.DrawString(_font, _options[i], _optionPositions[i], color);
+                Rectangle rect = _optionBounds[i];
+                int paddingX = 30;
+                int paddingY = 10;
+                Rectangle buttonRect = new Rectangle(rect.X - paddingX/2, rect.Y - paddingY/2, rect.Width + paddingX, rect.Height + paddingY);
+
+                Color buttonColor = new Color(60, 60, 60, 200); // normaal
+                if (buttonRect.Contains(mousePos) || _selectedIndex == i)
+                {
+                    if (mouse.LeftButton == ButtonState.Pressed && buttonRect.Contains(mousePos))
+                        buttonColor = new Color(30, 30, 30, 220); // klik
+                    else
+                        buttonColor = new Color(40, 40, 40, 210); // hover/selected
+                }
+
+                Texture2D rectTex = new Texture2D(graphicsDevice, 1, 1);
+                rectTex.SetData(new[] { Color.White });
+                spriteBatch.Draw(rectTex, buttonRect, buttonColor);
+
+                Vector2 textPos = new Vector2(
+                    buttonRect.X + (buttonRect.Width - rect.Width) / 2,
+                    buttonRect.Y + (buttonRect.Height - rect.Height) / 2
+                );
+                spriteBatch.DrawString(_font, _options[i], textPos, Color.White);
             }
         }
     }
