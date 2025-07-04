@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Input;
 using ForestQuest.Entities;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
+using ForestQuest.State;
 
 namespace ForestQuest.State
 {
@@ -19,6 +20,8 @@ namespace ForestQuest.State
         private SoundEffectInstance _playerMoveSoundInstance;
         private float _footstepTimer = 0f;
         private bool _isMultiplayer;
+        private bool _isPaused = false;
+        private PauseMenu _pauseMenu;
 
         private int[,] _backgroundTiles = new int[,]
         {
@@ -82,21 +85,60 @@ namespace ForestQuest.State
             // Initialize player
             _player = new Player(new Vector2(15 * 32, 15 * 32)); // Start in the middle of the map
             _player.LoadContent(_content);
+
+            _pauseMenu = new PauseMenu(_content, _graphicsDevice);
         }
 
         public override void Update(GameTime gameTime)
         {
-            var keyboardState = Keyboard.GetState();
+            KeyboardState keyboardState = Keyboard.GetState();
+
+            // Pauze aan/uit
+            if (!_isPaused && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
+            {
+                _isPaused = true;
+                return;
+            }
+            else if (_isPaused && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
+            {
+                _isPaused = false;
+                return;
+            }
+
+            if (_isPaused)
+            {
+                int option = _pauseMenu.Update();
+                if (option == 0) // Resume
+                {
+                    _isPaused = false;
+                }
+                else if (option == 1) // Back to menu
+                {
+                    MediaPlayer.Stop();
+                    _game.ChangeState(new MenuState(_game, _content, _graphicsDevice));
+                    return;
+                }
+                else if (option == 2) // Options
+                {
+                    // Nog geen actie
+                }
+                else if (option == 3) // Quit
+                {
+                    _game.Exit();
+                }
+                return;
+            }
 
             // Update player
-            _player.Update(keyboardState, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
+            var keyboardState2 = Keyboard.GetState();
+            _player.Update(keyboardState2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
             // Footstep sound timer
             const float footstepInterval = 0.3f;
             _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             // Check if player is moving
-            bool isMoving = keyboardState.IsKeyDown(Keys.Z) || keyboardState.IsKeyDown(Keys.Q) ||
+            bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
                             keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.D);
 
             if (isMoving && _footstepTimer >= footstepInterval)
@@ -193,6 +235,14 @@ namespace ForestQuest.State
             _player.Draw(spriteBatch);
 
             spriteBatch.End();
+
+            // Pauze popup tekenen
+            if (_isPaused)
+            {
+                spriteBatch.Begin();
+                _pauseMenu.Draw(spriteBatch, _graphicsDevice);
+                spriteBatch.End();
+            }
         }
     }
 }

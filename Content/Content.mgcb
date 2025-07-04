@@ -25,6 +25,12 @@
 /processorParam:Quality=Best
 /build:Audio/footsteps.wav
 
+#begin Audio/forest_menu.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/forest_menu.mp3
+
 #begin Background/Cave Tiles/Slice 113.png
 /importer:TextureImporter
 /processor:TextureProcessor

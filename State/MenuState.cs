@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 
 namespace ForestQuest.State
 {
@@ -11,6 +12,7 @@ namespace ForestQuest.State
         private string[] _menuOptions = { "Single Player", "Multiplayer", "Quit" };
         private Vector2[] _menuPositions;
         private Rectangle[] _menuBounds;
+        private Song _menuMusic;
 
         public MenuState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice)
             : base(game, content, graphicsDevice)
@@ -22,6 +24,11 @@ namespace ForestQuest.State
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
+
+            // Achtergrondmuziek
+            _menuMusic = _content.Load<Song>("Audio/forest_menu");
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Play(_menuMusic);
 
             // Calculate centered positions for menu options
             float screenWidth = _graphicsDevice.Viewport.Width;
