@@ -9,7 +9,7 @@ namespace ForestQuest.Entities
     {
         private Texture2D _spritesheet;
         private Vector2 _position;
-        private float _speed = 6f;
+        private float _speed = 3f;
 
         // Animatie
         private int _frameWidth;
@@ -20,12 +20,12 @@ namespace ForestQuest.Entities
         private double _elapsedTime;
         private int _currentRow;
 
-        private Camera _camera; // Nieuwe camera
+        private Camera _camera;
 
-        public Vector2 Position => _position; // Voor toegang tot positie
-        public int FrameWidth => _frameWidth; // Voor camera-centrering
-        public int FrameHeight => _frameHeight; // Voor camera-centrering
-        public Matrix CameraTransform => _camera.Transform; // Voor toegang tot camera-transformatie
+        public Vector2 Position => _position;
+        public int FrameWidth => _frameWidth;
+        public int FrameHeight => _frameHeight;
+        public Matrix CameraTransform => _camera.Transform;
 
         public Player(Vector2 startPosition)
         {
@@ -169,15 +169,35 @@ namespace ForestQuest.Entities
         {
             public Vector2 Position { get; private set; }
             public Matrix Transform { get; private set; }
+            private bool _isInitialized;
+
+            public Camera()
+            {
+                _isInitialized = false;
+            }
 
             public void Follow(Player player, Viewport viewport, int mapWidth, int mapHeight)
             {
-                // Centreer de camera op de speler
-                var playerPosition = player.Position;
-                var cameraPosition = new Vector2(
-                    playerPosition.X + (player.FrameWidth * 0.17f) / 2 - viewport.Width / 2,
-                    playerPosition.Y + (player.FrameHeight * 0.17f) / 2 - viewport.Height / 2
-                );
+                Vector2 cameraPosition;
+
+                if (!_isInitialized)
+                {
+                    // Centreer de map bij initialisatie
+                    cameraPosition = new Vector2(
+                        (mapWidth - viewport.Width) / 2,
+                        (mapHeight - viewport.Height) / 2
+                    );
+                    _isInitialized = true;
+                }
+                else
+                {
+                    // Volg de speler
+                    var playerPosition = player.Position;
+                    cameraPosition = new Vector2(
+                        playerPosition.X + (player.FrameWidth * 0.17f) / 2 - viewport.Width / 2,
+                        playerPosition.Y + (player.FrameHeight * 0.17f) / 2 - viewport.Height / 2
+                    );
+                }
 
                 // Beperk de camera binnen de mapgrenzen
                 cameraPosition.X = MathHelper.Clamp(cameraPosition.X, 0, mapWidth - viewport.Width);

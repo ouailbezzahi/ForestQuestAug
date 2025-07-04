@@ -1465,6 +1465,13 @@
 /processorParam:TextureFormat=Color
 /build:Enemy/squirrel.png
 
+#begin Fonts/Font.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Fonts/Font.spritefont
+
 #begin Items/apple.png
 /importer:TextureImporter
 /processor:TextureProcessor
