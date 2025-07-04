@@ -943,6 +943,18 @@
 /processorParam:TextureFormat=Color
 /build:Background/House/Slice 9.png
 
+#begin Background/Logo/ForestQuestLogo.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Background/Logo/ForestQuestLogo.png
+
 #begin Background/Menu/menu_background.jpg
 /importer:TextureImporter
 /processor:TextureProcessor

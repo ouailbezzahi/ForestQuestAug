@@ -83,7 +83,7 @@ namespace ForestQuest.Entities
             if (newPosition.X + scaledWidth > mapWidth) newPosition.X = mapWidth - scaledWidth;
             if (newPosition.Y + scaledHeight > mapHeight) newPosition.Y = mapHeight - scaledHeight;
 
-            // Controleer collision met huizen (0) en bomen (1)
+            // Controleer collision wanneer object geen grass is
             if (backgroundTiles != null)
             {
                 Rectangle playerRect = new Rectangle(
@@ -97,7 +97,7 @@ namespace ForestQuest.Entities
                 {
                     for (int x = 0; x < backgroundTiles.GetLength(1); x++)
                     {
-                        if (backgroundTiles[y, x] == 0 || backgroundTiles[y, x] == 1)
+                        if (backgroundTiles[y, x] != 2)
                         {
                             Rectangle tileRect = new Rectangle(
                                 x * tileSize,

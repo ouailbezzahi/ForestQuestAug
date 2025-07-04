@@ -13,6 +13,7 @@
   <ItemGroup>
     <None Remove="Content\apple.png" />
     <None Remove="Content\Audio\footsteps.mp3" />
+    <None Remove="Content\Background\Logo\ForestQuestLogo.png" />
     <None Remove="Content\coin.jpg" />
     <None Remove="Content\healthbar.jpg" />
     <None Remove="Content\key.jpg" />
@@ -35,6 +36,9 @@
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.2.1105" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.2.1105" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Content\Background\Logo\" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />

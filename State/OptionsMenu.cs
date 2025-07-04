@@ -104,6 +104,13 @@ namespace ForestQuest.State
             float popupX = (screenWidth - popupWidth) / 2;
             float popupY = (screenHeight - popupHeight) / 2;
 
+            // Herbereken layout bij elke draw (voor resize)
+            _soundSliderBar = new Rectangle((int)(popupX + 80), (int)(popupY + 80), _sliderWidth, _sliderHeight);
+            _sfxSliderBar = new Rectangle((int)(popupX + 80), (int)(popupY + 140), _sliderWidth, _sliderHeight);
+            _soundKnob = new Rectangle(_soundSliderBar.X + (_soundValue * (_sliderWidth - _knobWidth) / 100), _soundSliderBar.Y - 10, _knobWidth, _knobHeight);
+            _sfxKnob = new Rectangle(_sfxSliderBar.X + (_sfxValue * (_sliderWidth - _knobWidth) / 100), _sfxSliderBar.Y - 10, _knobWidth, _knobHeight);
+            _backButton = new Rectangle((int)(popupX + (popupWidth - 120) / 2), (int)(popupY + popupHeight - 50), 120, 32);
+
             // Overlay
             Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
             overlay.SetData(new[] { new Color(0, 0, 0, 0.7f) });

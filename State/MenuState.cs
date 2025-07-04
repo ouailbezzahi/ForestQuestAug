@@ -16,6 +16,7 @@ namespace ForestQuest.State
         private Song _menuMusic;
         private ScrollingBackground _background;
         private State _nextState;
+        private Texture2D _logo;
 
         public MenuState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice)
             : base(game, content, graphicsDevice)
@@ -27,6 +28,9 @@ namespace ForestQuest.State
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
+
+            // Logo laden
+            _logo = _content.Load<Texture2D>("Background/Logo/ForestQuestLogo");
 
             // Achtergrondmuziek
             _menuMusic = _content.Load<Song>("Audio/forest_menu");
@@ -108,15 +112,47 @@ namespace ForestQuest.State
                 x += texWidth;
             }
 
-            // Menu knoppen tekenen
+            // Logo tekenen boven de knoppen
+            int logoWidth = screenWidth / 4; // 2x kleiner dan voorheen
+            int logoHeight = _logo != null ? (int)((float)_logo.Height / _logo.Width * logoWidth) : 0;
+            int logoX = (screenWidth - logoWidth) / 2;
+            int logoY = screenHeight / 12; // iets hoger voor meer ruimte
+            if (_logo != null)
+            {
+                spriteBatch.Draw(_logo, new Rectangle(logoX, logoY, logoWidth, logoHeight), Color.White);
+            }
+
+            // Menu knoppen tekenen ONDER het logo
             MouseState mouse = Mouse.GetState();
             Point mousePos = mouse.Position;
+            float spacing = 40f;
+            int totalButtonsHeight = 0;
+            int[] buttonHeights = new int[_menuOptions.Length];
+            int[] buttonYs = new int[_menuOptions.Length];
             for (int i = 0; i < _menuOptions.Length; i++)
             {
-                Rectangle rect = _menuBounds[i];
+                Vector2 textSize = _font.MeasureString(_menuOptions[i]);
                 int paddingX = 30;
                 int paddingY = 10;
-                Rectangle buttonRect = new Rectangle(rect.X - paddingX/2, rect.Y - paddingY/2, rect.Width + paddingX, rect.Height + paddingY);
+                int buttonHeight = (int)textSize.Y + paddingY;
+                buttonHeights[i] = buttonHeight;
+                totalButtonsHeight += buttonHeight;
+                if (i > 0) totalButtonsHeight += (int)spacing;
+            }
+            // Start direct na het logo met spacing
+            int buttonsStartY = logoY + logoHeight + (int)spacing;
+            int currentY = buttonsStartY;
+            for (int i = 0; i < _menuOptions.Length; i++)
+            {
+                Vector2 textSize = _font.MeasureString(_menuOptions[i]);
+                int paddingX = 30;
+                int paddingY = 10;
+                int buttonWidth = (int)textSize.X + paddingX;
+                int buttonHeight = (int)textSize.Y + paddingY;
+                int buttonX = (screenWidth - buttonWidth) / 2;
+                int buttonY = currentY;
+                buttonYs[i] = buttonY;
+                Rectangle buttonRect = new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
 
                 Color buttonColor = new Color(60, 60, 60, 200); // normaal
                 if (buttonRect.Contains(mousePos))
@@ -132,10 +168,11 @@ namespace ForestQuest.State
                 spriteBatch.Draw(rectTex, buttonRect, buttonColor);
 
                 Vector2 textPos = new Vector2(
-                    buttonRect.X + (buttonRect.Width - rect.Width) / 2,
-                    buttonRect.Y + (buttonRect.Height - rect.Height) / 2
+                    buttonRect.X + (buttonRect.Width - textSize.X) / 2,
+                    buttonRect.Y + (buttonRect.Height - textSize.Y) / 2
                 );
                 spriteBatch.DrawString(_font, _menuOptions[i], textPos, Color.White);
+                currentY += buttonHeight + (int)spacing;
             }
             spriteBatch.End();
         }

@@ -94,10 +94,27 @@ namespace ForestQuest.State
         {
             float screenWidth = graphicsDevice.Viewport.Width;
             float screenHeight = graphicsDevice.Viewport.Height;
+            float spacing = 50f;
             float popupWidth = 350f;
             float popupHeight = 300f;
             float popupX = (screenWidth - popupWidth) / 2;
             float popupY = (screenHeight - popupHeight) / 2;
+
+            // Herbereken optieposities en bounds bij elke draw (voor resize)
+            for (int i = 0; i < _options.Length; i++)
+            {
+                Vector2 textSize = _font.MeasureString(_options[i]);
+                _optionPositions[i] = new Vector2(
+                    popupX + (popupWidth - textSize.X) / 2,
+                    popupY + 60 + i * spacing
+                );
+                _optionBounds[i] = new Rectangle(
+                    (int)_optionPositions[i].X,
+                    (int)_optionPositions[i].Y,
+                    (int)textSize.X,
+                    (int)textSize.Y
+                );
+            }
 
             // Donkere overlay
             Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
