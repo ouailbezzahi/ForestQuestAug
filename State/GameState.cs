@@ -6,6 +6,9 @@ using ForestQuest.Entities;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 using ForestQuest.State;
+using System.Collections.Generic;
+using ForestQuest.Items.Coin;
+using ForestQuest.UI;
 
 namespace ForestQuest.State
 {
@@ -33,6 +36,13 @@ namespace ForestQuest.State
         private PauseMenu _pauseMenu;
         private OptionsMenu _optionsMenu;
         private bool _showingOptions = false;
+        private int _coinCount = 0;
+        private Texture2D _coinIcon;
+        private CoinManager _coinManager;
+        private CoinCounter _coinCounter;
+        private HealthBar _healthBar;
+
+        private DialogBox _dialogBox;
 
         private int[,] _backgroundTiles = new int[,]
         {
@@ -49,7 +59,7 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -84,38 +94,47 @@ namespace ForestQuest.State
             _grassTile = _content.Load<Texture2D>("Background/Grass/Slice 21"); //2
 
             //Border textures
-            //Cornered borders
             _borderLeftUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 3"); //3
             _borderLeftDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 5"); //4
             _borderRightUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 1"); //5
             _borderRightDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 7"); //6
-
-            //Straight borders
             _borderVertical = _content.Load<Texture2D>("Background/Wooden Border/Slice 4"); //7
             _borderHorizontal = _content.Load<Texture2D>("Background/Wooden Border/Slice 2"); //8
 
             // Load audio
             _backgroundMusic = _content.Load<Song>("Audio/background_music");
             _playerMoveSound = _content.Load<SoundEffect>("Audio/footsteps");
-
-            // Create sound effect instance
             _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
             _playerMoveSoundInstance.IsLooped = false;
 
-            // Play background music
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
-            // Initialize player
             _player = new Player(new Vector2(15 * 32, 15 * 32)); // Start in the middle of the map
             _player.LoadContent(_content);
 
             _pauseMenu = new PauseMenu(_content, _graphicsDevice);
             _optionsMenu = new OptionsMenu(_content, _graphicsDevice);
+
+            int mapWidth = _backgroundTiles.GetLength(1);
+            int mapHeight = _backgroundTiles.GetLength(0);
+            _coinManager = new CoinManager(_content, mapWidth, mapHeight);
+            _coinCounter = new CoinCounter(_content);
+            _healthBar = new HealthBar(_content, 100); // max health 100
+
+            string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
+            _dialogBox = new DialogBox(_content, introText);
         }
 
         public override void Update(GameTime gameTime)
         {
+            // DialogBox overlay: blokkeer gameplay zolang deze zichtbaar is
+            if (_dialogBox != null && _dialogBox.IsVisible)
+            {
+                _dialogBox.Update();
+                return;
+            }
+
             KeyboardState keyboardState = Keyboard.GetState();
 
             // Pauze aan/uit
@@ -134,7 +153,6 @@ namespace ForestQuest.State
             {
                 if (_showingOptions)
                 {
-                    // Zet volume van muziek en SFX op basis van sliders
                     MediaPlayer.Volume = _optionsMenu.SoundValue / 100f;
                     _playerMoveSoundInstance.Volume = _optionsMenu.SFXValue / 100f;
 
@@ -167,15 +185,28 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Update player
             var keyboardState2 = Keyboard.GetState();
             _player.Update(keyboardState2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
-            // Footstep sound timer
+            _coinManager.Update(gameTime);
+
+            for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
+            {
+                var coin = _coinManager.Coins[i];
+                Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                if (coin.BoundingBox.Intersects(playerRect))
+                {
+                    if (keyboardState2.IsKeyDown(Keys.E))
+                    {
+                        _coinManager.Coins.RemoveAt(i);
+                        _coinCounter.AddCoins(1);
+                    }
+                }
+            }
+
             const float footstepInterval = 0.3f;
             _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            // Check if player is moving
             bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
                             keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.D);
 
@@ -192,7 +223,6 @@ namespace ForestQuest.State
                 _playerMoveSoundInstance.Stop();
             }
 
-            // Placeholder for multiplayer logic
             if (_isMultiplayer)
             {
                 // Add multiplayer-specific logic here in the future
@@ -203,13 +233,11 @@ namespace ForestQuest.State
         {
             _graphicsDevice.Clear(Color.CornflowerBlue);
 
-            // Use player's camera transform
             spriteBatch.Begin(transformMatrix: _player.CameraTransform);
 
             int tileSize = 32;
             float grassScale = 2f;
 
-            // First pass: Draw grass tiles (2)
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
             {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
@@ -233,7 +261,6 @@ namespace ForestQuest.State
                 }
             }
 
-            // Second pass: Draw houses (0) and trees (1)
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
             {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
@@ -272,7 +299,6 @@ namespace ForestQuest.State
 
                     if (tileTexture != null)
                     {
-                        // Borders altijd als 32x32 tekenen zodat ze netjes aansluiten
                         if (_backgroundTiles[y, x] >= 3 && _backgroundTiles[y, x] <= 8)
                         {
                             spriteBatch.Draw(
@@ -304,25 +330,23 @@ namespace ForestQuest.State
                 }
             }
 
-            // Draw player
+            _coinManager.Draw(spriteBatch);
             _player.Draw(spriteBatch);
 
             spriteBatch.End();
 
-            // Pauze popup tekenen
+            spriteBatch.Begin();
+            _healthBar.Draw(spriteBatch, _graphicsDevice);
+            _coinCounter.Draw(spriteBatch, _graphicsDevice);
             if (_isPaused)
             {
-                spriteBatch.Begin();
-                if (_showingOptions)
-                {
-                    _optionsMenu.Draw(spriteBatch, _graphicsDevice);
-                }
-                else
-                {
-                    _pauseMenu.Draw(spriteBatch, _graphicsDevice);
-                }
-                spriteBatch.End();
+                _pauseMenu.Draw(spriteBatch, _graphicsDevice);
             }
+            if (_dialogBox != null && _dialogBox.IsVisible)
+            {
+                _dialogBox.Draw(spriteBatch, _graphicsDevice);
+            }
+            spriteBatch.End();
         }
     }
 }
