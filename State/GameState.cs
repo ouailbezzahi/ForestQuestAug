@@ -44,6 +44,8 @@ namespace ForestQuest.State
 
         private DialogBox _dialogBox;
 
+        private List<Enemy> _enemies;
+
         private int[,] _backgroundTiles = new int[,]
         {
             { 3, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5 },
@@ -116,14 +118,33 @@ namespace ForestQuest.State
             _pauseMenu = new PauseMenu(_content, _graphicsDevice);
             _optionsMenu = new OptionsMenu(_content, _graphicsDevice);
 
-            int mapWidth = _backgroundTiles.GetLength(1);
-            int mapHeight = _backgroundTiles.GetLength(0);
-            _coinManager = new CoinManager(_content, mapWidth, mapHeight);
+            int tileSize = 32;
+            int mapWidth = _backgroundTiles.GetLength(1) * tileSize;
+            int mapHeight = _backgroundTiles.GetLength(0) * tileSize;
+
+            _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize);
             _coinCounter = new CoinCounter(_content);
             _healthBar = new HealthBar(_content, 100); // max health 100
 
             string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
             _dialogBox = new DialogBox(_content, introText);
+
+            // Enemy initialisatie
+            _enemies = new List<Enemy>();
+            var spawnPositions = new List<Vector2>
+            {
+                new Vector2(100, 100),
+                new Vector2(300, 100),
+                new Vector2(500, 100),
+                new Vector2(100, 300),
+                new Vector2(300, 300)
+            };
+            foreach (var pos in spawnPositions)
+            {
+                var enemy = new Enemy(pos);
+                enemy.LoadContent(_content);
+                _enemies.Add(enemy);
+            }
         }
 
         public override void Update(GameTime gameTime)
@@ -187,6 +208,12 @@ namespace ForestQuest.State
 
             var keyboardState2 = Keyboard.GetState();
             _player.Update(keyboardState2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
+
+            // Enemy updates
+            foreach (var enemy in _enemies)
+            {
+                enemy.Update(gameTime, _player.Position);
+            }
 
             _coinManager.Update(gameTime);
 
@@ -332,6 +359,12 @@ namespace ForestQuest.State
 
             _coinManager.Draw(spriteBatch);
             _player.Draw(spriteBatch);
+
+            // Enemy tekenen
+            foreach (var enemy in _enemies)
+            {
+                enemy.Draw(spriteBatch, _player.Position);
+            }
 
             spriteBatch.End();
 
