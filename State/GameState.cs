@@ -212,7 +212,7 @@ namespace ForestQuest.State
             // Enemy updates
             foreach (var enemy in _enemies)
             {
-                enemy.Update(gameTime, _player.Position);
+                enemy.Update(gameTime, _player.Position, _backgroundTiles);
             }
 
             _coinManager.Update(gameTime);
