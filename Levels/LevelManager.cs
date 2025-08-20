@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using ForestQuest.Entities;
+using ForestQuest.Entities.Enemies;
 
 namespace ForestQuest.Levels
 {

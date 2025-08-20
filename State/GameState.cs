@@ -2,13 +2,13 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using ForestQuest.Entities;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
-using ForestQuest.State;
 using System.Collections.Generic;
 using ForestQuest.Items.Coin;
 using ForestQuest.UI;
+using ForestQuest.Entities.Enemies;
+using ForestQuest.Entities.Player;
 
 namespace ForestQuest.State
 {
@@ -54,8 +54,8 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -63,6 +63,10 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -115,6 +119,16 @@ namespace ForestQuest.State
             _player = new Player(new Vector2(15 * 32, 15 * 32)); // Start in the middle of the map
             _player.LoadContent(_content);
 
+            // HealthBar direct initialiseren met huidige health
+            _healthBar = new HealthBar(_content, 100);
+            _healthBar.SetHealth(_player.Health);
+
+            // Subscribe op health wijziging
+            _player.OnHealthChanged += (cur, max) =>
+            {
+                _healthBar.SetHealth(cur);
+            };
+
             _pauseMenu = new PauseMenu(_content, _graphicsDevice);
             _optionsMenu = new OptionsMenu(_content, _graphicsDevice);
 
@@ -129,21 +143,21 @@ namespace ForestQuest.State
             string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
             _dialogBox = new DialogBox(_content, introText);
 
-            // Enemy initialisatie
+            // Enemy initialisatie (cats)
             _enemies = new List<Enemy>();
-            var spawnPositions = new List<Vector2>
+            var spawnPositions = new[]
             {
-                new Vector2(100, 100),
-                new Vector2(300, 100),
-                new Vector2(500, 100),
-                new Vector2(100, 300),
-                new Vector2(300, 300)
+                new Vector2(100,100),
+                new Vector2(300,100),
+                new Vector2(500,100),
+                new Vector2(100,300),
+                new Vector2(300,300)
             };
-            foreach (var pos in spawnPositions)
+            for (int i = 0; i < spawnPositions.Length; i++)
             {
-                var enemy = new Enemy(pos);
-                enemy.LoadContent(_content);
-                _enemies.Add(enemy);
+                var e = new Enemy(spawnPositions[i]);
+                e.LoadContent(_content);
+                _enemies.Add(e);
             }
         }
 
@@ -215,13 +229,25 @@ namespace ForestQuest.State
                 enemy.Update(gameTime, _player.Position, _backgroundTiles);
             }
 
+            // NIEUW: damage applicatie (na updates zodat states/frames actueel zijn)
+            Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.TryDealDamage(playerRect, out int dmg))
+                {
+                    _player.ApplyDamage(dmg);
+                    // (optioneel) update health bar als deze een SetValue(int) of vergelijkbare methode heeft:
+                    // _healthBar.SetHealth(_player.Health);
+                }
+            }
+
             _coinManager.Update(gameTime);
 
             for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
             {
                 var coin = _coinManager.Coins[i];
-                Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
-                if (coin.BoundingBox.Intersects(playerRect))
+                Rectangle playerRect2 = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                if (coin.BoundingBox.Intersects(playerRect2))
                 {
                     if (keyboardState2.IsKeyDown(Keys.E))
                     {
@@ -231,6 +257,7 @@ namespace ForestQuest.State
                 }
             }
 
+            // Footsteps / rest (ongewijzigd)
             const float footstepInterval = 0.3f;
             _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -252,7 +279,7 @@ namespace ForestQuest.State
 
             if (_isMultiplayer)
             {
-                // Add multiplayer-specific logic here in the future
+                // future logic
             }
         }
 
