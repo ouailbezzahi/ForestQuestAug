@@ -8,38 +8,31 @@ namespace ForestQuest.Entities.Enemies
 {
     public class Enemy
     {
-        // Wereldpositie: voeten (bottom center)
         private Vector2 _feetPos;
 
-        // Movement / detectie
         private float _speed = 1.2f;
         private bool _followingPlayer;
         private float _followDistance = 140f;
         private float _stopFollowDistance = 190f;
         private float _attackRange = 42f;
 
-        // Facing
         private enum Facing { Left, Right }
         private Facing _facing = Facing.Right;
         private double _idleDirTimer;
         private const double IdleDirSwitch = 2.0;
 
-        // State
         private EnemyState _state = EnemyState.Idle;
         private bool _isDead;
         private bool _stateLocked;
 
-        // (Optioneel) Health
         private int _maxHealth = 60;
         private int _health;
 
-        // Textures
         private Texture2D _texIdle;
         private Texture2D _texRun;
         private Texture2D _texAttack;
         private Texture2D _texDeath;
 
-        // Animation data (zelfde structuur als Player)
         private class AnimFrame { public Rectangle Src; public Vector2 Pivot; }
         private class Animation { public List<AnimFrame> Frames = new(); public double FrameTime; public bool Loop; }
 
@@ -53,47 +46,74 @@ namespace ForestQuest.Entities.Enemies
         private double _animElapsed;
         private bool _animFinished;
 
-        // Collision (afgeleid)
         private int _collisionWidth;
         private int _collisionHeight;
+        private float _scale; // NIET meer readonly -> afhankelijk van type
 
-        private readonly float _scale = 0.5f;
-
-        // Attack timing
-        private int _attackImpactFrame = 1; // wordt gezet na BuildAnimation
+        private int _attackImpactFrame = 1;
         private float _hitCooldownTimer;
         private const float HitCooldownDuration = 2f;
 
-        public int Level { get; }
+        public int LevelVariant { get; }
+        public EnemyType Type { get; }
+        public int Health => _health;
+        public int MaxHealth => _maxHealth;
+        public bool IsBoss => Type == EnemyType.Wolf;
 
-        public Enemy(Vector2 startTopLeft, int level = 1)
+        public event Action<int,int>? OnHealthChanged;
+        private void RaiseHealthChanged() => OnHealthChanged?.Invoke(_health, _maxHealth);
+        private void ChangeHealth(int newValue)
         {
-            // Tijdelijk minimale waardes tot na load
+            int clamped = Math.Clamp(newValue, 0, _maxHealth);
+            if (clamped == _health) return;
+            _health = clamped;
+            RaiseHealthChanged();
+        }
+
+        public Enemy(Vector2 startTopLeft, EnemyType type = EnemyType.Cat, int levelVariant = 1)
+        {
             _collisionWidth = 1;
             _collisionHeight = 1;
             _feetPos = new Vector2(startTopLeft.X + _collisionWidth * 0.5f, startTopLeft.Y + _collisionHeight);
-            Level = Math.Clamp(level, 1, 3);
-            _health = _maxHealth;
+            LevelVariant = Math.Clamp(levelVariant, 1, 3);
+            Type = type;
+            _scale = type == EnemyType.Wolf ? 1.5f : 0.5f; // SCALE PER TYPE
+            _health = _maxHealth = type switch
+            {
+                EnemyType.Cat => 60,
+                EnemyType.Dog => 90,
+                EnemyType.Wolf => 200,
+                _ => 60
+            };
         }
 
         public void LoadContent(ContentManager content)
         {
-            _texIdle   = content.Load<Texture2D>("Enemy/Level1/cat_idle");
-            _texRun    = content.Load<Texture2D>("Enemy/Level1/cat_run");
-            _texAttack = content.Load<Texture2D>("Enemy/Level1/cat_attack");
-            _texDeath  = content.Load<Texture2D>("Enemy/Level1/cat_death");
+            string levelDir = $"Enemy/Level{LevelVariant}";
+            string baseName = Type switch
+            {
+                EnemyType.Cat => "cat",
+                EnemyType.Dog => "dog",
+                EnemyType.Wolf => "wolf",
+                _ => "cat"
+            };
+
+            _texIdle   = content.Load<Texture2D>($"{levelDir}/{baseName}_idle");
+            _texRun    = content.Load<Texture2D>($"{levelDir}/{baseName}_run");
+            _texAttack = content.Load<Texture2D>($"{levelDir}/{baseName}_attack");
+            _texDeath  = content.Load<Texture2D>($"{levelDir}/{baseName}_death");
 
             _animIdle   = BuildAnimation(_texIdle,   4, 0.18, true);
             _animRun    = BuildAnimation(_texRun,    6, 0.10, true);
             _animAttack = BuildAnimation(_texAttack, 4, 0.12, false);
             _animDeath  = BuildAnimation(_texDeath,  4, 0.15, false);
 
-            // Impact frame = midden van attack anim
             if (_animAttack.Frames.Count > 0)
                 _attackImpactFrame = _animAttack.Frames.Count / 2;
 
             DeriveCollisionFromIdle();
             SetState(EnemyState.Idle, force: true);
+            RaiseHealthChanged();
         }
 
         private Animation BuildAnimation(Texture2D tex, int frameCount, double frameTime, bool loop)
@@ -101,8 +121,6 @@ namespace ForestQuest.Entities.Enemies
             var anim = new Animation { FrameTime = frameTime, Loop = loop };
             int rawFrameWidth = tex.Width / frameCount;
             int rawFrameHeight = tex.Height;
-
-            // Pixel data voor trimming
             Color[] pixels = new Color[tex.Width * tex.Height];
             tex.GetData(pixels);
 
@@ -187,8 +205,18 @@ namespace ForestQuest.Entities.Enemies
         public void Kill()
         {
             if (_isDead) return;
-            _isDead = true;
-            SetState(EnemyState.Death, force: true);
+            ApplyDamage(_health); // gebruikt HP mechaniek
+        }
+
+        public void ApplyDamage(int amount)
+        {
+            if (_isDead) return;
+            ChangeHealth(_health - amount);
+            if (_health <= 0)
+            {
+                _isDead = true;
+                SetState(EnemyState.Death, force: true);
+            }
         }
 
         public void Update(GameTime gameTime, Vector2 playerTopLeft) => Update(gameTime, playerTopLeft, null);
@@ -204,9 +232,7 @@ namespace ForestQuest.Entities.Enemies
                 return;
             }
 
-            // Bepaal speler-center (top-left + half collision)
-            // Player expose top-left; we reconstrueren center voor afstand
-            Vector2 playerCenter = playerTopLeft + new Vector2(0, 0); // vereenvoudigd (fine voor follow)
+            Vector2 playerCenter = playerTopLeft;
             Vector2 myCenter = new(_feetPos.X, _feetPos.Y - _collisionHeight * 0.5f);
             float dist = Vector2.Distance(myCenter, playerCenter);
 
@@ -270,7 +296,6 @@ namespace ForestQuest.Entities.Enemies
                 _feetPos += delta;
                 return;
             }
-
             Vector2 newFeet = _feetPos + delta;
             CollideFeet(ref newFeet, tiles);
             _feetPos = newFeet;
@@ -282,7 +307,6 @@ namespace ForestQuest.Entities.Enemies
             int mapWidth = tiles.GetLength(1) * tileSize;
             int mapHeight = tiles.GetLength(0) * tileSize;
 
-            // World bounds
             if (feet.X - _collisionWidth * 0.5f < 0) feet.X = _collisionWidth * 0.5f;
             if (feet.X + _collisionWidth * 0.5f > mapWidth) feet.X = mapWidth - _collisionWidth * 0.5f;
             if (feet.Y > mapHeight) feet.Y = mapHeight;
@@ -299,7 +323,7 @@ namespace ForestQuest.Entities.Enemies
                         Rectangle tileRect = new(x * tileSize, y * tileSize, tileSize, tileSize);
                         if (box.Intersects(tileRect))
                         {
-                            feet = _feetPos; // rollback
+                            feet = _feetPos;
                             return;
                         }
                     }
@@ -337,7 +361,6 @@ namespace ForestQuest.Entities.Enemies
             }
         }
 
-        // Player damage (impact frame)
         public bool TryDealDamage(Rectangle playerRect, out int damage)
         {
             damage = 0;
@@ -348,11 +371,11 @@ namespace ForestQuest.Entities.Enemies
             if (_currentFrameIndex != _attackImpactFrame) return false;
             if (!BoundingBox.Intersects(playerRect)) return false;
 
-            damage = Level switch
+            damage = Type switch
             {
-                1 => 10,
-                2 => 20,
-                3 => 30,
+                EnemyType.Cat => 10,
+                EnemyType.Dog => 18,
+                EnemyType.Wolf => 30,
                 _ => 10
             };
             _hitCooldownTimer = HitCooldownDuration;
@@ -376,8 +399,6 @@ namespace ForestQuest.Entities.Enemies
         }
 
         public Rectangle BoundingBox => FeetRect(_feetPos);
-
-        // Expose top-left style Position (compat met bestaande code)
         public Vector2 Position => new(_feetPos.X - _collisionWidth * 0.5f, _feetPos.Y - _collisionHeight);
         public EnemyState State => _state;
         public bool IsDead => _isDead;

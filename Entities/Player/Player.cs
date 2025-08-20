@@ -2,7 +2,7 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Audio; // <-- Added
+using Microsoft.Xna.Framework.Audio;
 using System;
 using System.Collections.Generic;
 
@@ -10,34 +10,28 @@ namespace ForestQuest.Entities.Player
 {
     public class Player
     {
-        // Wereldpositie = VOET (bottom center) => geen visuele verschuiving meer per frame.
         private Vector2 _feetPos;
         private float _baseSpeed = 3f;
         private float _speed;
-
         private readonly float _scale = 0.8f;
 
         private PlayerState _state = PlayerState.Idle;
         private bool _stateLocked;
 
-        // Health
         private int _maxHealth = 100;
         private int _health;
         public int Health => _health;
         public bool IsDead => _state == PlayerState.Death;
 
-        // Facing
         private enum Facing { Left, Right }
         private Facing _facing = Facing.Right;
 
-        // Textures
         private Texture2D _texIdle;
         private Texture2D _texRun;
         private Texture2D _texAttack;
         private Texture2D _texHurt;
         private Texture2D _texDeath;
 
-        // SFX (new)
         private SoundEffect _sfxHurt;
         private SoundEffect _sfxDeath;
 
@@ -58,7 +52,6 @@ namespace ForestQuest.Entities.Player
         private int _collisionWidth;
         private int _collisionHeight;
 
-        // Attack timing
         private double _attackCooldown = 0.5;
         private double _attackLockTime = 0.40;
         private double _attackCooldownTimer;
@@ -84,7 +77,7 @@ namespace ForestQuest.Entities.Player
 
         public event Action<int, int>? OnHealthChanged;
 
-        public Player(Vector2 startTopLeft)
+        public Player(Vector2 startTopLeft, int levelVariant = 1)
         {
             _collisionWidth = 1;
             _collisionHeight = 1;
@@ -95,15 +88,14 @@ namespace ForestQuest.Entities.Player
 
         public void LoadContent(ContentManager content)
         {
-            _texIdle   = content.Load<Texture2D>("Player/Level1/hero_level1_idle");
-            _texRun    = content.Load<Texture2D>("Player/Level1/hero_level1_run");
-            _texAttack = content.Load<Texture2D>("Player/Level1/hero_level1_attack");
-            _texHurt   = content.Load<Texture2D>("Player/Level1/hero_level1_hurt");
-            _texDeath  = content.Load<Texture2D>("Player/Level1/hero_level1_death");
+            _texIdle   = content.Load<Texture2D>($"Player/Level1/hero_level1_idle");
+            _texRun    = content.Load<Texture2D>($"Player/Level1/hero_level1_run");
+            _texAttack = content.Load<Texture2D>($"Player/Level1/hero_level1_attack");
+            _texHurt   = content.Load<Texture2D>($"Player/Level1/hero_level1_hurt");
+            _texDeath  = content.Load<Texture2D>($"Player/Level1/hero_level1_death");
 
-            // NEW: load sounds (adjust paths if needed)
-            _sfxHurt  = content.Load<SoundEffect>("Audio/hero_hurt");
-            _sfxDeath = content.Load<SoundEffect>("Audio/hero_death");
+            _sfxHurt  = SafeLoadSfx(content, "Audio/hero_hurt");
+            _sfxDeath = SafeLoadSfx(content, "Audio/hero_death");
 
             _animIdle   = BuildAnimation(_texIdle,   4, 0.15, true);
             _animRun    = BuildAnimation(_texRun,    6, 0.09, true);
@@ -114,6 +106,11 @@ namespace ForestQuest.Entities.Player
             DeriveCollisionBoxFromIdle();
             SetState(PlayerState.Idle, force: true);
             RaiseHealthChanged();
+        }
+
+        private SoundEffect SafeLoadSfx(ContentManager content, string asset)
+        {
+            try { return content.Load<SoundEffect>(asset); } catch { return null; }
         }
 
         private Animation BuildAnimation(Texture2D tex, int frameCount, double frameTime, bool loop)
@@ -235,12 +232,12 @@ namespace ForestQuest.Entities.Player
             if (_health <= 0)
             {
                 SetState(PlayerState.Death, force: true);
-                _sfxDeath?.Play();            // play death sound once
+                _sfxDeath?.Play();
             }
             else
             {
                 SetState(PlayerState.Hurt, force: true);
-                _sfxHurt?.Play();             // play hurt sound once
+                _sfxHurt?.Play();
             }
         }
 

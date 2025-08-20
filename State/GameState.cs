@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 using System.Collections.Generic;
+using System.Linq;
 using ForestQuest.Items.Coin;
 using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
@@ -14,6 +15,9 @@ namespace ForestQuest.State
 {
     public class GameState : State
     {
+        private readonly int _level; // 1,2,3
+
+        // Tiles
         private Texture2D _houseTile;
         private Texture2D _treeTile;
         private Texture2D _grassTile;
@@ -22,40 +26,44 @@ namespace ForestQuest.State
         private Texture2D _borderLeftDown;
         private Texture2D _borderRightUp;
         private Texture2D _borderRightDown;
-
         private Texture2D _borderVertical;
         private Texture2D _borderHorizontal;
 
+        // Player & audio
         private Player _player;
         private Song _backgroundMusic;
         private SoundEffect _playerMoveSound;
         private SoundEffectInstance _playerMoveSoundInstance;
         private float _footstepTimer = 0f;
+        private SoundEffect? _coinPickupSound;
 
-        // NEW: coin pickup sound
-        private SoundEffect _coinPickupSound;
-
+        // Menus & UI
         private bool _isMultiplayer;
         private bool _isPaused = false;
         private PauseMenu _pauseMenu;
         private OptionsMenu _optionsMenu;
         private bool _showingOptions = false;
+
         private int _coinCount = 0;
-        private Texture2D _coinIcon;
         private CoinManager _coinManager;
         private CoinCounter _coinCounter;
         private HealthBar _healthBar;
+        private DialogBox? _dialogBox;
 
-        private DialogBox _dialogBox;
-
+        // Enemies
         private List<Enemy> _enemies;
-
         private EnemyCounter _enemyCounter;
         private int _totalEnemies;
         private int _enemiesKilled;
         public int TotalEnemies => _totalEnemies;
         public int EnemiesKilled => _enemiesKilled;
 
+        // Boss
+        private Enemy? _bossEnemy;
+        private BossHealthBar? _bossHealthBar;
+        private const int PLAYER_WOLF_ATTACK_DAMAGE = 25;
+
+        // State
         private bool _gameOverTriggered;
         private bool _victoryTriggered;
 
@@ -63,41 +71,42 @@ namespace ForestQuest.State
 
         private int[,] _backgroundTiles = new int[,]
         {
-            { 3, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 7 },
-            { 7, 2, 2, 1, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 6 },
+            { 3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,5 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
+            { 7,2,2,1,1,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 4,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,6 },
         };
 
-        public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer)
+        public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 1)
             : base(game, content, graphicsDevice)
         {
             _isMultiplayer = isMultiplayer;
+            _level = level;
         }
 
         public override void LoadContent()
@@ -118,19 +127,12 @@ namespace ForestQuest.State
             _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
             _playerMoveSoundInstance.IsLooped = false;
 
-            try
-            {
-                _coinPickupSound = _content.Load<SoundEffect>("Audio/get_coin");
-            }
-            catch
-            {
-                _coinPickupSound = null;
-            }
+            try { _coinPickupSound = _content.Load<SoundEffect>("Audio/get_coin"); } catch { _coinPickupSound = null; }
 
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
-            _player = new Player(new Vector2(15 * 32, 15 * 32));
+            _player = new Player(new Vector2(15 * 32, 15 * 32), _level);
             _player.LoadContent(_content);
 
             _healthBar = new HealthBar(_content, 100);
@@ -144,28 +146,66 @@ namespace ForestQuest.State
             int mapWidth = _backgroundTiles.GetLength(1) * tileSize;
             int mapHeight = _backgroundTiles.GetLength(0) * tileSize;
 
-            _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize);
+            int coinSpawn = _level switch
+            {
+                1 => 10,
+                2 => 15,
+                3 => 12,
+                _ => 10
+            };
+            _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize, coinSpawn);
             _coinCounter = new CoinCounter(_content);
-            _healthBar = new HealthBar(_content, 100);
             _totalCoins = _coinManager.Coins.Count;
 
-            string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
-            _dialogBox = new DialogBox(_content, introText);
+            _dialogBox = _level == 1
+                ? new DialogBox(_content, "Welkom in Forest Quest! ... (Level 1)")
+                : null;
 
             _enemies = new List<Enemy>();
-            var spawnPositions = new[]
+
+            if (_level == 1)
             {
-                new Vector2(100,100),
-                new Vector2(300,100),
-                new Vector2(500,100),
-                new Vector2(100,300),
-                new Vector2(300,300)
-            };
-            for (int i = 0; i < spawnPositions.Length; i++)
+                var catSpawns = new[]
+                {
+                    new Vector2(100,100),
+                    new Vector2(300,100),
+                    new Vector2(500,100),
+                    new Vector2(100,300),
+                    new Vector2(300,300)
+                };
+                foreach (var pos in catSpawns)
+                {
+                    var e = new Enemy(pos, EnemyType.Cat, 1);
+                    e.LoadContent(_content);
+                    _enemies.Add(e);
+                }
+            }
+            else if (_level == 2)
             {
-                var e = new Enemy(spawnPositions[i]);
-                e.LoadContent(_content);
-                _enemies.Add(e);
+                var dogSpawns = new[]
+                {
+                    new Vector2(120,120),
+                    new Vector2(480,140),
+                    new Vector2(720,180),
+                    new Vector2(200,420),
+                    new Vector2(520,440),
+                    new Vector2(840,300),
+                    new Vector2(300,600),
+                    new Vector2(660,620)
+                };
+                foreach (var pos in dogSpawns)
+                {
+                    var e = new Enemy(pos, EnemyType.Dog, 2);
+                    e.LoadContent(_content);
+                    _enemies.Add(e);
+                }
+            }
+            else if (_level == 3)
+            {
+                var wolf = new Enemy(new Vector2(600, 400), EnemyType.Wolf, 3);
+                wolf.LoadContent(_content);
+                _enemies.Add(wolf);
+                // (Eventueel extra dogs toevoegen)
             }
 
             _totalEnemies = _enemies.Count;
@@ -173,23 +213,33 @@ namespace ForestQuest.State
 
             _enemyCounter = new EnemyCounter(_content);
             _enemyCounter.Set(_enemiesKilled, _totalEnemies);
+
+            _bossEnemy = _enemies.FirstOrDefault(e => e.Type == EnemyType.Wolf);
+            if (_bossEnemy != null)
+            {
+                _bossHealthBar = new BossHealthBar(_content, _graphicsDevice, _bossEnemy.MaxHealth)
+                {
+                    Area = new Rectangle(20, 55, 320, 20)
+                };
+                _bossEnemy.OnHealthChanged += (cur, max) => _bossHealthBar.Set(cur, max);
+            }
         }
 
         private void StopFootsteps()
         {
-            if (_playerMoveSoundInstance != null && _playerMoveSoundInstance.State == SoundState.Playing)
+            if (_playerMoveSoundInstance is { State: SoundState.Playing })
                 _playerMoveSoundInstance.Stop();
         }
 
         public override void Update(GameTime gameTime)
         {
-            if (_dialogBox != null && _dialogBox.IsVisible)
+            if (_dialogBox is { IsVisible: true })
             {
                 _dialogBox.Update();
                 return;
             }
 
-            KeyboardState keyboardState = Keyboard.GetState();
+            var keyboardState = Keyboard.GetState();
 
             if (!_isPaused && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
             {
@@ -208,7 +258,6 @@ namespace ForestQuest.State
                 {
                     MediaPlayer.Volume = _optionsMenu.SoundValue / 100f;
                     _playerMoveSoundInstance.Volume = _optionsMenu.SFXValue / 100f;
-
                     bool closeOptions = _optionsMenu.Update(_graphicsDevice);
                     if (closeOptions) _showingOptions = false;
                     return;
@@ -227,8 +276,8 @@ namespace ForestQuest.State
                 return;
             }
 
-            var keyboardState2 = Keyboard.GetState();
-            _player.Update(keyboardState2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
+            var kb2 = Keyboard.GetState();
+            _player.Update(kb2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
             foreach (var enemy in _enemies)
                 enemy.Update(gameTime, _player.Position, _backgroundTiles);
@@ -240,32 +289,35 @@ namespace ForestQuest.State
                 {
                     if (!enemy.IsDead && attackHit.Intersects(enemy.BoundingBox))
                     {
-                        enemy.Kill();
-                        _enemiesKilled++;
-                        _enemyCounter.Set(_enemiesKilled, _totalEnemies);
+                        if (enemy.Type == EnemyType.Wolf)
+                            enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
+                        else
+                            enemy.Kill();
+
+                        if (enemy.IsDead)
+                        {
+                            _enemiesKilled++;
+                            _enemyCounter.Set(_enemiesKilled, _totalEnemies);
+                        }
                     }
                 }
             }
 
-            Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+            Rectangle playerRect = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
             foreach (var enemy in _enemies)
-            {
                 if (enemy.TryDealDamage(playerRect, out int dmg))
                     _player.ApplyDamage(dmg);
-            }
 
             _coinManager.Update(gameTime);
             for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
             {
                 var coin = _coinManager.Coins[i];
                 Rectangle playerRect2 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
-                if (coin.BoundingBox.Intersects(playerRect2) && keyboardState2.IsKeyDown(Keys.E))
+                if (coin.BoundingBox.Intersects(playerRect2) && kb2.IsKeyDown(Keys.E))
                 {
                     _coinManager.Coins.RemoveAt(i);
                     _coinCounter.AddCoins(1);
                     _coinCount++;
-
-                    // NEW: play coin pickup sound (respect SFX slider if available)
                     float sfxVolume = (_optionsMenu != null) ? _optionsMenu.SFXValue / 100f : 1f;
                     _coinPickupSound?.Play(sfxVolume, 0f, 0f);
                 }
@@ -275,8 +327,8 @@ namespace ForestQuest.State
             {
                 const float footstepInterval = 0.3f;
                 _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
-                bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
-                                keyboardState2.IsKeyDown(Keys.S) || keyboardState2.IsKeyDown(Keys.D);
+                bool isMoving = kb2.IsKeyDown(Keys.Z) || kb2.IsKeyDown(Keys.Q) ||
+                                kb2.IsKeyDown(Keys.S) || kb2.IsKeyDown(Keys.D);
 
                 if (isMoving && _footstepTimer >= footstepInterval)
                 {
@@ -311,6 +363,7 @@ namespace ForestQuest.State
                     _game,
                     _content,
                     _graphicsDevice,
+                    _level,
                     coinsCollected: _coinCount,
                     totalCoins: _totalCoins,
                     enemiesKilled: _enemiesKilled,
@@ -330,7 +383,6 @@ namespace ForestQuest.State
                     coinsCollected: _coinCount,
                     enemiesKilled: _enemiesKilled,
                     totalEnemies: _totalEnemies));
-                return;
             }
         }
 
@@ -345,13 +397,14 @@ namespace ForestQuest.State
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                     if (_backgroundTiles[y, x] == 2)
-                        spriteBatch.Draw(_grassTile, new Vector2(x * tileSize, y * tileSize), null, Color.White, 0f, Vector2.Zero, new Vector2(grassScale), SpriteEffects.None, 0f);
+                        spriteBatch.Draw(_grassTile, new Vector2(x * tileSize, y * tileSize),
+                            null, Color.White, 0f, Vector2.Zero, new Vector2(grassScale), SpriteEffects.None, 0f);
 
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
             {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                 {
-                    Texture2D tileTexture = null;
+                    Texture2D? tileTexture = null;
                     Vector2 position = new(x * tileSize, y * tileSize);
                     switch (_backgroundTiles[y, x])
                     {
@@ -366,7 +419,7 @@ namespace ForestQuest.State
                     }
                     if (tileTexture != null)
                     {
-                        if (_backgroundTiles[y, x] >= 3 && _backgroundTiles[y, x] <= 8)
+                        if (_backgroundTiles[y, x] is >= 3 and <= 8)
                             spriteBatch.Draw(tileTexture, new Rectangle((int)position.X, (int)position.Y, tileSize, tileSize), Color.White);
                         else
                             spriteBatch.Draw(tileTexture, position, Color.White);
@@ -382,11 +435,12 @@ namespace ForestQuest.State
             spriteBatch.End();
 
             spriteBatch.Begin();
-            _healthBar.Draw(spriteBatch, _graphicsDevice);
             _coinCounter.Draw(spriteBatch, _graphicsDevice);
-            _enemyCounter?.Draw(spriteBatch);
+            _bossHealthBar?.Draw(spriteBatch);
+            _healthBar.Draw(spriteBatch, _graphicsDevice);
+            _enemyCounter.Draw(spriteBatch);
             if (_isPaused) _pauseMenu.Draw(spriteBatch, _graphicsDevice);
-            if (_dialogBox != null && _dialogBox.IsVisible) _dialogBox.Draw(spriteBatch, _graphicsDevice);
+            if (_dialogBox is { IsVisible: true }) _dialogBox.Draw(spriteBatch, _graphicsDevice);
             spriteBatch.End();
         }
     }

@@ -8,13 +8,14 @@ namespace ForestQuest.State
 {
     public class VictoryState : State
     {
+        private readonly int _currentLevel;
         private readonly int _coinsCollected;
         private readonly int _totalCoins;
         private readonly int _enemiesKilled;
         private readonly int _totalEnemies;
 
         private SpriteFont _font;
-        private readonly string[] _options = { "Next Level", "Play Again", "Quit" };
+        private string[] _options;
         private int _selectedIndex;
         private KeyboardState _prevKb;
 
@@ -24,12 +25,14 @@ namespace ForestQuest.State
         public VictoryState(Game1 game,
                             ContentManager content,
                             GraphicsDevice graphicsDevice,
+                            int currentLevel,
                             int coinsCollected,
                             int totalCoins,
                             int enemiesKilled,
                             int totalEnemies)
             : base(game, content, graphicsDevice)
         {
+            _currentLevel = currentLevel;
             _coinsCollected = coinsCollected;
             _totalCoins = totalCoins;
             _enemiesKilled = enemiesKilled;
@@ -39,15 +42,11 @@ namespace ForestQuest.State
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
+            try { _sfxVictory = _content.Load<SoundEffect>("Audio/victory"); } catch { _sfxVictory = null; }
 
-            try
-            {
-                _sfxVictory = _content.Load<SoundEffect>("Audio/victory");
-            }
-            catch
-            {
-                _sfxVictory = null;
-            }
+            _options = _currentLevel < 3
+                ? new[] { "Next Level", "Play Again", "Quit" }
+                : new[] { "Play Again", "Quit" };
 
             PlaySoundOnce();
         }
@@ -68,24 +67,33 @@ namespace ForestQuest.State
             bool down = kb.IsKeyDown(Keys.Down) && _prevKb.IsKeyUp(Keys.Down);
             bool enter = kb.IsKeyDown(Keys.Enter) && _prevKb.IsKeyUp(Keys.Enter);
 
-            if (up)
-                _selectedIndex = (_selectedIndex - 1 + _options.Length) % _options.Length;
-            if (down)
-                _selectedIndex = (_selectedIndex + 1) % _options.Length;
+            if (up) _selectedIndex = (_selectedIndex - 1 + _options.Length) % _options.Length;
+            if (down) _selectedIndex = (_selectedIndex + 1) % _options.Length;
 
             if (enter)
             {
-                switch (_selectedIndex)
+                if (_currentLevel < 3)
                 {
-                    case 0: // Next Level (placeholder: opnieuw GameState)
-                        _game.ChangeState(new GameState(_game, _content, _graphicsDevice, isMultiplayer: false));
-                        return;
-                    case 1: // Play Again (zelfde level herstarten)
-                        _game.ChangeState(new GameState(_game, _content, _graphicsDevice, isMultiplayer: false));
-                        return;
-                    case 2: // Quit
-                        _game.Exit();
-                        return;
+                    switch (_selectedIndex)
+                    {
+                        case 0: // Next Level
+                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, _currentLevel + 1));
+                            return;
+                        case 1: // Play Again (same level)
+                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, _currentLevel));
+                            return;
+                        case 2: _game.Exit(); return;
+                    }
+                }
+                else
+                {
+                    switch (_selectedIndex)
+                    {
+                        case 0: // Play Again (restart level 1)
+                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, 1));
+                            return;
+                        case 1: _game.Exit(); return;
+                    }
                 }
             }
 
@@ -100,14 +108,16 @@ namespace ForestQuest.State
             string title = "VICTORY";
             string stats1 = $"Coins:   {_coinsCollected}/{_totalCoins}";
             string stats2 = $"Enemies: {_enemiesKilled}/{_totalEnemies}";
+            string levelInfo = $"Level:   {_currentLevel}";
 
             var vp = _graphicsDevice.Viewport;
             Vector2 center = new(vp.Width / 2f, vp.Height / 2f);
 
             Vector2 titleSize = _font.MeasureString(title);
-            Vector2 titlePos = center - new Vector2(titleSize.X / 2f, 180);
+            Vector2 titlePos = center - new Vector2(titleSize.X / 2f, 200);
             spriteBatch.DrawString(_font, title, titlePos, Color.Gold);
 
+            spriteBatch.DrawString(_font, levelInfo, center - new Vector2(_font.MeasureString(levelInfo).X / 2f, 140), Color.White);
             spriteBatch.DrawString(_font, stats1, center - new Vector2(_font.MeasureString(stats1).X / 2f, 110), Color.White);
             spriteBatch.DrawString(_font, stats2, center - new Vector2(_font.MeasureString(stats2).X / 2f, 80), Color.White);
 
