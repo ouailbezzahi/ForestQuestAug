@@ -31,6 +31,10 @@ namespace ForestQuest.State
         private SoundEffect _playerMoveSound;
         private SoundEffectInstance _playerMoveSoundInstance;
         private float _footstepTimer = 0f;
+
+        // NEW: coin pickup sound
+        private SoundEffect _coinPickupSound;
+
         private bool _isMultiplayer;
         private bool _isPaused = false;
         private PauseMenu _pauseMenu;
@@ -46,18 +50,15 @@ namespace ForestQuest.State
 
         private List<Enemy> _enemies;
 
-        // Enemy statistieken + UI
         private EnemyCounter _enemyCounter;
         private int _totalEnemies;
         private int _enemiesKilled;
         public int TotalEnemies => _totalEnemies;
         public int EnemiesKilled => _enemiesKilled;
 
-        // Game over / victory guards
         private bool _gameOverTriggered;
         private bool _victoryTriggered;
 
-        // Coins totaal voor victory scherm
         private int _totalCoins;
 
         private int[,] _backgroundTiles = new int[,]
@@ -81,6 +82,7 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 7 },
             { 7, 2, 2, 1, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -115,6 +117,15 @@ namespace ForestQuest.State
             _playerMoveSound = _content.Load<SoundEffect>("Audio/footsteps");
             _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
             _playerMoveSoundInstance.IsLooped = false;
+
+            try
+            {
+                _coinPickupSound = _content.Load<SoundEffect>("Audio/get_coin");
+            }
+            catch
+            {
+                _coinPickupSound = null;
+            }
 
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
@@ -222,7 +233,6 @@ namespace ForestQuest.State
             foreach (var enemy in _enemies)
                 enemy.Update(gameTime, _player.Position, _backgroundTiles);
 
-            // Player attack -> instant kill
             if (_player.IsAttackActive)
             {
                 Rectangle attackHit = _player.GetAttackHitbox();
@@ -237,7 +247,6 @@ namespace ForestQuest.State
                 }
             }
 
-            // Enemy damage to player
             Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
             foreach (var enemy in _enemies)
             {
@@ -255,10 +264,13 @@ namespace ForestQuest.State
                     _coinManager.Coins.RemoveAt(i);
                     _coinCounter.AddCoins(1);
                     _coinCount++;
+
+                    // NEW: play coin pickup sound (respect SFX slider if available)
+                    float sfxVolume = (_optionsMenu != null) ? _optionsMenu.SFXValue / 100f : 1f;
+                    _coinPickupSound?.Play(sfxVolume, 0f, 0f);
                 }
             }
 
-            // Footsteps
             if (!_gameOverTriggered && !_victoryTriggered && !_player.IsDead)
             {
                 const float footstepInterval = 0.3f;
@@ -287,7 +299,6 @@ namespace ForestQuest.State
                 // future logic
             }
 
-            // Victory transition (alle coins weg + alle enemies dood + speler leeft)
             if (!_victoryTriggered &&
                 !_player.IsDead &&
                 _enemiesKilled == _totalEnemies &&
@@ -307,7 +318,6 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Game over transition
             if (!_gameOverTriggered && _player.IsDead && !_victoryTriggered)
             {
                 _gameOverTriggered = true;
