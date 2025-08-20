@@ -53,8 +53,12 @@ namespace ForestQuest.State
         public int TotalEnemies => _totalEnemies;
         public int EnemiesKilled => _enemiesKilled;
 
-        // Game over transition guard
+        // Game over / victory guards
         private bool _gameOverTriggered;
+        private bool _victoryTriggered;
+
+        // Coins totaal voor victory scherm
+        private int _totalCoins;
 
         private int[,] _backgroundTiles = new int[,]
         {
@@ -66,8 +70,6 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -76,7 +78,7 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 7 },
             { 7, 2, 2, 1, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -134,6 +136,7 @@ namespace ForestQuest.State
             _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize);
             _coinCounter = new CoinCounter(_content);
             _healthBar = new HealthBar(_content, 100);
+            _totalCoins = _coinManager.Coins.Count;
 
             string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
             _dialogBox = new DialogBox(_content, introText);
@@ -251,12 +254,12 @@ namespace ForestQuest.State
                 {
                     _coinManager.Coins.RemoveAt(i);
                     _coinCounter.AddCoins(1);
-                    _coinCount++; // bijhouden voor game over scherm
+                    _coinCount++;
                 }
             }
 
-            // Footsteps enkel als niet dood en geen game over in gang
-            if (!_gameOverTriggered && !_player.IsDead)
+            // Footsteps
+            if (!_gameOverTriggered && !_victoryTriggered && !_player.IsDead)
             {
                 const float footstepInterval = 0.3f;
                 _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -276,7 +279,6 @@ namespace ForestQuest.State
             }
             else
             {
-                // Forceer stoppen zodra dood / game over
                 StopFootsteps();
             }
 
@@ -285,8 +287,28 @@ namespace ForestQuest.State
                 // future logic
             }
 
+            // Victory transition (alle coins weg + alle enemies dood + speler leeft)
+            if (!_victoryTriggered &&
+                !_player.IsDead &&
+                _enemiesKilled == _totalEnemies &&
+                _coinManager.Coins.Count == 0)
+            {
+                _victoryTriggered = true;
+                MediaPlayer.Stop();
+                StopFootsteps();
+                _game.ChangeState(new VictoryState(
+                    _game,
+                    _content,
+                    _graphicsDevice,
+                    coinsCollected: _coinCount,
+                    totalCoins: _totalCoins,
+                    enemiesKilled: _enemiesKilled,
+                    totalEnemies: _totalEnemies));
+                return;
+            }
+
             // Game over transition
-            if (!_gameOverTriggered && _player.IsDead)
+            if (!_gameOverTriggered && _player.IsDead && !_victoryTriggered)
             {
                 _gameOverTriggered = true;
                 MediaPlayer.Stop();

@@ -37,6 +37,12 @@
 /processorParam:Quality=Best
 /build:Audio/game_over.wav
 
+#begin Audio/get_coin.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/get_coin.wav
+
 #begin Audio/hero_death.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
@@ -48,6 +54,12 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:Audio/hero_hurt.wav
+
+#begin Audio/victory.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/victory.wav
 
 #begin Background/Cave Tiles/Slice 113.png
 /importer:TextureImporter
