@@ -82,7 +82,7 @@ namespace ForestQuest.Entities.Enemies
             {
                 EnemyType.Cat => 60,
                 EnemyType.Dog => 90,
-                EnemyType.Wolf => 200,
+                EnemyType.Wolf => 100,
                 _ => 60
             };
         }

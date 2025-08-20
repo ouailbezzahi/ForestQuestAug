@@ -15,7 +15,7 @@ namespace ForestQuest.State
 {
     public class GameState : State
     {
-        private readonly int _level; // 1,2,3
+        private readonly int _level;
 
         // Tiles
         private Texture2D _houseTile;
@@ -61,7 +61,11 @@ namespace ForestQuest.State
         // Boss
         private Enemy? _bossEnemy;
         private BossHealthBar? _bossHealthBar;
-        private const int PLAYER_WOLF_ATTACK_DAMAGE = 25;
+        private const int PLAYER_WOLF_ATTACK_DAMAGE = 20;
+
+        // NIEUW: track enemies geraakt in huidige swing
+        private readonly HashSet<Enemy> _hitEnemiesThisAttack = new();
+        private bool _prevAttackActive;
 
         // State
         private bool _gameOverTriggered;
@@ -81,6 +85,7 @@ namespace ForestQuest.State
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
@@ -94,6 +99,9 @@ namespace ForestQuest.State
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,7 },
@@ -102,7 +110,7 @@ namespace ForestQuest.State
             { 4,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,6 },
         };
 
-        public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 1)
+        public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 3)
             : base(game, content, graphicsDevice)
         {
             _isMultiplayer = isMultiplayer;
@@ -219,7 +227,7 @@ namespace ForestQuest.State
             {
                 _bossHealthBar = new BossHealthBar(_content, _graphicsDevice, _bossEnemy.MaxHealth)
                 {
-                    Area = new Rectangle(20, 55, 320, 20)
+                    Area = new Rectangle(250, 20, 260, 22)
                 };
                 _bossEnemy.OnHealthChanged += (cur, max) => _bossHealthBar.Set(cur, max);
             }
@@ -282,17 +290,27 @@ namespace ForestQuest.State
             foreach (var enemy in _enemies)
                 enemy.Update(gameTime, _player.Position, _backgroundTiles);
 
+            // Reset set bij einde van een attack
+            if (!_player.IsAttackActive && _prevAttackActive)
+            {
+                _hitEnemiesThisAttack.Clear();
+            }
+
             if (_player.IsAttackActive)
             {
                 Rectangle attackHit = _player.GetAttackHitbox();
                 foreach (var enemy in _enemies)
                 {
-                    if (!enemy.IsDead && attackHit.Intersects(enemy.BoundingBox))
+                    if (!enemy.IsDead &&
+                        attackHit.Intersects(enemy.BoundingBox) &&
+                        !_hitEnemiesThisAttack.Contains(enemy))
                     {
                         if (enemy.Type == EnemyType.Wolf)
                             enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
                         else
                             enemy.Kill();
+
+                        _hitEnemiesThisAttack.Add(enemy);
 
                         if (enemy.IsDead)
                         {
@@ -302,6 +320,8 @@ namespace ForestQuest.State
                     }
                 }
             }
+
+            _prevAttackActive = _player.IsAttackActive;
 
             Rectangle playerRect = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
             foreach (var enemy in _enemies)
