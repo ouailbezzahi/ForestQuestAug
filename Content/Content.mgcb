@@ -31,6 +31,18 @@
 /processorParam:Quality=Best
 /build:Audio/forest_menu.mp3
 
+#begin Audio/hero_death.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/hero_death.wav
+
+#begin Audio/hero_hurt.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/hero_hurt.wav
+
 #begin Background/Cave Tiles/Slice 113.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -1555,6 +1567,18 @@
 /processorParam:TextureFormat=Color
 /build:Enemy/Level1/cat_death.png
 
+#begin Enemy/Level1/cat_hurt.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Enemy/Level1/cat_hurt.png
+
 #begin Enemy/Level1/cat_idle.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -1602,6 +1626,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Enemy/Level2/dog_death.png
+
+#begin Enemy/Level2/dog_hurt.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Enemy/Level2/dog_hurt.png
 
 #begin Enemy/Level2/dog_idle.png
 /importer:TextureImporter

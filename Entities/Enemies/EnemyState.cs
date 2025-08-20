@@ -5,6 +5,7 @@ namespace ForestQuest.Entities.Enemies
         Idle,
         Run,
         Attack,
+        Hurt,
         Death
     }
 }

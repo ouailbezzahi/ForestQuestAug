@@ -46,6 +46,12 @@ namespace ForestQuest.State
 
         private List<Enemy> _enemies;
 
+        // Nieuw: enemy statistieken
+        private int _totalEnemies;
+        private int _enemiesKilled;
+        public int TotalEnemies => _totalEnemies;
+        public int EnemiesKilled => _enemiesKilled;
+
         private int[,] _backgroundTiles = new int[,]
         {
             { 3, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5 },
@@ -58,12 +64,11 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -94,20 +99,17 @@ namespace ForestQuest.State
 
         public override void LoadContent()
         {
-            // Load tile textures
-            _houseTile = _content.Load<Texture2D>("Background/House/Slice 10"); //0
-            _treeTile = _content.Load<Texture2D>("Background/Tree/Slice 12"); //1
-            _grassTile = _content.Load<Texture2D>("Background/Grass/Slice 21"); //2
+            _houseTile = _content.Load<Texture2D>("Background/House/Slice 10");
+            _treeTile = _content.Load<Texture2D>("Background/Tree/Slice 12");
+            _grassTile = _content.Load<Texture2D>("Background/Grass/Slice 21");
 
-            //Border textures
-            _borderLeftUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 3"); //3
-            _borderLeftDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 5"); //4
-            _borderRightUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 1"); //5
-            _borderRightDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 7"); //6
-            _borderVertical = _content.Load<Texture2D>("Background/Wooden Border/Slice 4"); //7
-            _borderHorizontal = _content.Load<Texture2D>("Background/Wooden Border/Slice 2"); //8
+            _borderLeftUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 3");
+            _borderLeftDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 5");
+            _borderRightUp = _content.Load<Texture2D>("Background/Wooden Border/Slice 1");
+            _borderRightDown = _content.Load<Texture2D>("Background/Wooden Border/Slice 7");
+            _borderVertical = _content.Load<Texture2D>("Background/Wooden Border/Slice 4");
+            _borderHorizontal = _content.Load<Texture2D>("Background/Wooden Border/Slice 2");
 
-            // Load audio
             _backgroundMusic = _content.Load<Song>("Audio/background_music");
             _playerMoveSound = _content.Load<SoundEffect>("Audio/footsteps");
             _playerMoveSoundInstance = _playerMoveSound.CreateInstance();
@@ -116,18 +118,12 @@ namespace ForestQuest.State
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
-            _player = new Player(new Vector2(15 * 32, 15 * 32)); // Start in the middle of the map
+            _player = new Player(new Vector2(15 * 32, 15 * 32));
             _player.LoadContent(_content);
 
-            // HealthBar direct initialiseren met huidige health
             _healthBar = new HealthBar(_content, 100);
             _healthBar.SetHealth(_player.Health);
-
-            // Subscribe op health wijziging
-            _player.OnHealthChanged += (cur, max) =>
-            {
-                _healthBar.SetHealth(cur);
-            };
+            _player.OnHealthChanged += (cur, max) => _healthBar.SetHealth(cur);
 
             _pauseMenu = new PauseMenu(_content, _graphicsDevice);
             _optionsMenu = new OptionsMenu(_content, _graphicsDevice);
@@ -138,12 +134,11 @@ namespace ForestQuest.State
 
             _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize);
             _coinCounter = new CoinCounter(_content);
-            _healthBar = new HealthBar(_content, 100); // max health 100
+            _healthBar = new HealthBar(_content, 100);
 
             string introText = "Welkom in Forest Quest!\nJe bent Lina, een jonge avonturier die haar dorp wil redden van een mysterieuze duisternis in het Verloren Bos. Versla vijandige dieren, verzamel items en vind de bron van de duisternis: de Shadow Wolf.\nGebruik WASD om te bewegen, Spatie om aan te vallen, en E om items op te rapen. Verzamel genoeg munten en vind de sleutel om naar het volgende level te gaan!";
             _dialogBox = new DialogBox(_content, introText);
 
-            // Enemy initialisatie (cats)
             _enemies = new List<Enemy>();
             var spawnPositions = new[]
             {
@@ -159,11 +154,13 @@ namespace ForestQuest.State
                 e.LoadContent(_content);
                 _enemies.Add(e);
             }
+
+            _totalEnemies = _enemies.Count;
+            _enemiesKilled = 0;
         }
 
         public override void Update(GameTime gameTime)
         {
-            // DialogBox overlay: blokkeer gameplay zolang deze zichtbaar is
             if (_dialogBox != null && _dialogBox.IsVisible)
             {
                 _dialogBox.Update();
@@ -172,7 +169,6 @@ namespace ForestQuest.State
 
             KeyboardState keyboardState = Keyboard.GetState();
 
-            // Pauze aan/uit
             if (!_isPaused && (keyboardState.IsKeyDown(Keys.Escape) || keyboardState.IsKeyDown(Keys.P)))
             {
                 _isPaused = true;
@@ -192,84 +188,71 @@ namespace ForestQuest.State
                     _playerMoveSoundInstance.Volume = _optionsMenu.SFXValue / 100f;
 
                     bool closeOptions = _optionsMenu.Update(_graphicsDevice);
-                    if (closeOptions)
-                    {
-                        _showingOptions = false;
-                    }
+                    if (closeOptions) _showingOptions = false;
                     return;
                 }
                 int option = _pauseMenu.Update();
-                if (option == 0) // Resume
-                {
-                    _isPaused = false;
-                }
-                else if (option == 1) // Back to menu
+                if (option == 0) _isPaused = false;
+                else if (option == 1)
                 {
                     MediaPlayer.Stop();
                     _game.ChangeState(new MenuState(_game, _content, _graphicsDevice));
                     return;
                 }
-                else if (option == 2) // Options
-                {
-                    _showingOptions = true;
-                }
-                else if (option == 3) // Quit
-                {
-                    _game.Exit();
-                }
+                else if (option == 2) _showingOptions = true;
+                else if (option == 3) _game.Exit();
                 return;
             }
 
             var keyboardState2 = Keyboard.GetState();
             _player.Update(keyboardState2, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
-            // Enemy updates
             foreach (var enemy in _enemies)
-            {
                 enemy.Update(gameTime, _player.Position, _backgroundTiles);
-            }
 
-            // NIEUW: damage applicatie (na updates zodat states/frames actueel zijn)
-            Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
-            foreach (var enemy in _enemies)
+            // Player attack -> instant kill
+            if (_player.IsAttackActive)
             {
-                if (enemy.TryDealDamage(playerRect, out int dmg))
+                Rectangle attackHit = _player.GetAttackHitbox();
+                foreach (var enemy in _enemies)
                 {
-                    _player.ApplyDamage(dmg);
-                    // (optioneel) update health bar als deze een SetValue(int) of vergelijkbare methode heeft:
-                    // _healthBar.SetHealth(_player.Health);
-                }
-            }
-
-            _coinManager.Update(gameTime);
-
-            for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
-            {
-                var coin = _coinManager.Coins[i];
-                Rectangle playerRect2 = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
-                if (coin.BoundingBox.Intersects(playerRect2))
-                {
-                    if (keyboardState2.IsKeyDown(Keys.E))
+                    if (!enemy.IsDead && attackHit.Intersects(enemy.BoundingBox))
                     {
-                        _coinManager.Coins.RemoveAt(i);
-                        _coinCounter.AddCoins(1);
+                        enemy.Kill();
+                        _enemiesKilled++;
                     }
                 }
             }
 
-            // Footsteps / rest (ongewijzigd)
+            // Enemy damage to player
+            Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.TryDealDamage(playerRect, out int dmg))
+                    _player.ApplyDamage(dmg);
+            }
+
+            _coinManager.Update(gameTime);
+            for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
+            {
+                var coin = _coinManager.Coins[i];
+                Rectangle playerRect2 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                if (coin.BoundingBox.Intersects(playerRect2) && keyboardState2.IsKeyDown(Keys.E))
+                {
+                    _coinManager.Coins.RemoveAt(i);
+                    _coinCounter.AddCoins(1);
+                }
+            }
+
             const float footstepInterval = 0.3f;
             _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
-
             bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
-                            keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.D);
+                            keyboardState2.IsKeyDown(Keys.S) || keyboardState2.IsKeyDown(Keys.D);
 
             if (isMoving && _footstepTimer >= footstepInterval)
             {
                 if (_playerMoveSoundInstance.State != SoundState.Playing)
-                {
                     _playerMoveSoundInstance.Play();
-                }
                 _footstepTimer = 0f;
             }
             else if (!isMoving && _playerMoveSoundInstance.State == SoundState.Playing)
@@ -286,126 +269,57 @@ namespace ForestQuest.State
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {
             _graphicsDevice.Clear(Color.CornflowerBlue);
-
             spriteBatch.Begin(transformMatrix: _player.CameraTransform);
 
             int tileSize = 32;
             float grassScale = 2f;
 
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
-            {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
-                {
                     if (_backgroundTiles[y, x] == 2)
-                    {
-                        Vector2 position = new Vector2(x * tileSize, y * tileSize);
-                        Vector2 scale = new Vector2(grassScale, grassScale);
-                        spriteBatch.Draw(
-                            _grassTile,
-                            position,
-                            null,
-                            Color.White,
-                            0f,
-                            Vector2.Zero,
-                            scale,
-                            SpriteEffects.None,
-                            0f
-                        );
-                    }
-                }
-            }
+                        spriteBatch.Draw(_grassTile, new Vector2(x * tileSize, y * tileSize), null, Color.White, 0f, Vector2.Zero, new Vector2(grassScale), SpriteEffects.None, 0f);
 
             for (int y = 0; y < _backgroundTiles.GetLength(0); y++)
             {
                 for (int x = 0; x < _backgroundTiles.GetLength(1); x++)
                 {
                     Texture2D tileTexture = null;
-                    Vector2 position = new Vector2(x * tileSize, y * tileSize);
-                    Vector2 scale = Vector2.One;
-
+                    Vector2 position = new(x * tileSize, y * tileSize);
                     switch (_backgroundTiles[y, x])
                     {
-                        case 0:
-                            tileTexture = _houseTile;
-                            break;
-                        case 1:
-                            tileTexture = _treeTile;
-                            break;
-                        case 3:
-                            tileTexture = _borderLeftUp;
-                            break;
-                        case 4:
-                            tileTexture = _borderLeftDown;
-                            break;
-                        case 5:
-                            tileTexture = _borderRightUp;
-                            break;
-                        case 6:
-                            tileTexture = _borderRightDown;
-                            break;
-                        case 7:
-                            tileTexture = _borderVertical;
-                            break;
-                        case 8:
-                            tileTexture = _borderHorizontal;
-                            break;
+                        case 0: tileTexture = _houseTile; break;
+                        case 1: tileTexture = _treeTile; break;
+                        case 3: tileTexture = _borderLeftUp; break;
+                        case 4: tileTexture = _borderLeftDown; break;
+                        case 5: tileTexture = _borderRightUp; break;
+                        case 6: tileTexture = _borderRightDown; break;
+                        case 7: tileTexture = _borderVertical; break;
+                        case 8: tileTexture = _borderHorizontal; break;
                     }
-
                     if (tileTexture != null)
                     {
                         if (_backgroundTiles[y, x] >= 3 && _backgroundTiles[y, x] <= 8)
-                        {
-                            spriteBatch.Draw(
-                                tileTexture,
-                                new Rectangle((int)position.X, (int)position.Y, tileSize, tileSize),
-                                null,
-                                Color.White,
-                                0f,
-                                Vector2.Zero,
-                                SpriteEffects.None,
-                                0f
-                            );
-                        }
+                            spriteBatch.Draw(tileTexture, new Rectangle((int)position.X, (int)position.Y, tileSize, tileSize), Color.White);
                         else
-                        {
-                            spriteBatch.Draw(
-                                tileTexture,
-                                position,
-                                null,
-                                Color.White,
-                                0f,
-                                Vector2.Zero,
-                                scale,
-                                SpriteEffects.None,
-                                0f
-                            );
-                        }
+                            spriteBatch.Draw(tileTexture, position, Color.White);
                     }
                 }
             }
 
             _coinManager.Draw(spriteBatch);
             _player.Draw(spriteBatch);
-
-            // Enemy tekenen
             foreach (var enemy in _enemies)
-            {
                 enemy.Draw(spriteBatch, _player.Position);
-            }
 
             spriteBatch.End();
 
             spriteBatch.Begin();
             _healthBar.Draw(spriteBatch, _graphicsDevice);
             _coinCounter.Draw(spriteBatch, _graphicsDevice);
-            if (_isPaused)
-            {
-                _pauseMenu.Draw(spriteBatch, _graphicsDevice);
-            }
-            if (_dialogBox != null && _dialogBox.IsVisible)
-            {
-                _dialogBox.Draw(spriteBatch, _graphicsDevice);
-            }
+            // (Optioneel) debug weergave:
+            // spriteBatch.DrawString(_someFont, $"Kills: {_enemiesKilled}/{_totalEnemies}", new Vector2(10, 40), Color.White);
+            if (_isPaused) _pauseMenu.Draw(spriteBatch, _graphicsDevice);
+            if (_dialogBox != null && _dialogBox.IsVisible) _dialogBox.Draw(spriteBatch, _graphicsDevice);
             spriteBatch.End();
         }
     }

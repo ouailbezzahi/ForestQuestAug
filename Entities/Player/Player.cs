@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Audio; // <-- Added
 using System;
 using System.Collections.Generic;
 
@@ -9,7 +10,7 @@ namespace ForestQuest.Entities.Player
 {
     public class Player
     {
-        // Wereldpositie = VOET (bottom center)
+        // Wereldpositie = VOET (bottom center) => geen visuele verschuiving meer per frame.
         private Vector2 _feetPos;
         private float _baseSpeed = 3f;
         private float _speed;
@@ -23,32 +24,25 @@ namespace ForestQuest.Entities.Player
         private int _maxHealth = 100;
         private int _health;
         public int Health => _health;
-        public int MaxHealth => _maxHealth;
         public bool IsDead => _state == PlayerState.Death;
 
-        // Event voor HealthBar koppeling
-        public event Action<int, int>? OnHealthChanged;
-
+        // Facing
         private enum Facing { Left, Right }
         private Facing _facing = Facing.Right;
 
+        // Textures
         private Texture2D _texIdle;
         private Texture2D _texRun;
         private Texture2D _texAttack;
         private Texture2D _texHurt;
         private Texture2D _texDeath;
 
-        private class AnimFrame
-        {
-            public Rectangle Src;
-            public Vector2 Pivot;
-        }
-        private class Animation
-        {
-            public List<AnimFrame> Frames = new();
-            public double FrameTime;
-            public bool Loop;
-        }
+        // SFX (new)
+        private SoundEffect _sfxHurt;
+        private SoundEffect _sfxDeath;
+
+        private class AnimFrame { public Rectangle Src; public Vector2 Pivot; }
+        private class Animation { public List<AnimFrame> Frames = new(); public double FrameTime; public bool Loop; }
 
         private Animation _animIdle;
         private Animation _animRun;
@@ -88,6 +82,8 @@ namespace ForestQuest.Entities.Player
         public int FrameWidth => _collisionWidth;
         public int FrameHeight => _collisionHeight;
 
+        public event Action<int, int>? OnHealthChanged;
+
         public Player(Vector2 startTopLeft)
         {
             _collisionWidth = 1;
@@ -105,6 +101,10 @@ namespace ForestQuest.Entities.Player
             _texHurt   = content.Load<Texture2D>("Player/Level1/hero_level1_hurt");
             _texDeath  = content.Load<Texture2D>("Player/Level1/hero_level1_death");
 
+            // NEW: load sounds (adjust paths if needed)
+            _sfxHurt  = content.Load<SoundEffect>("Audio/hero_hurt");
+            _sfxDeath = content.Load<SoundEffect>("Audio/hero_death");
+
             _animIdle   = BuildAnimation(_texIdle,   4, 0.15, true);
             _animRun    = BuildAnimation(_texRun,    6, 0.09, true);
             _animAttack = BuildAnimation(_texAttack, 4, 0.15, false);
@@ -113,8 +113,6 @@ namespace ForestQuest.Entities.Player
 
             DeriveCollisionBoxFromIdle();
             SetState(PlayerState.Idle, force: true);
-
-            // Initial push naar HealthBar
             RaiseHealthChanged();
         }
 
@@ -138,7 +136,7 @@ namespace ForestQuest.Entities.Player
                     int yGlobal = full.Y + y;
                     for (int x = 0; x < full.Width; x++)
                     {
-                        int xGlobal = full.X + x;
+                        int xGlobal = frameX + x;
                         Color c = pixels[yGlobal * tex.Width + xGlobal];
                         if (c.A > 15)
                         {
@@ -217,7 +215,8 @@ namespace ForestQuest.Entities.Player
             SetState(PlayerState.Attack, force: true);
         }
 
-        // Health helpers
+        private void RaiseHealthChanged() => OnHealthChanged?.Invoke(_health, _maxHealth);
+
         private void ChangeHealth(int newValue)
         {
             int clamped = Math.Clamp(newValue, 0, _maxHealth);
@@ -226,21 +225,22 @@ namespace ForestQuest.Entities.Player
             RaiseHealthChanged();
         }
 
-        private void RaiseHealthChanged() => OnHealthChanged?.Invoke(_health, _maxHealth);
-
         public void ApplyDamage(int amount)
         {
             if (IsDead) return;
             if (_state == PlayerState.Hurt && !_animFinished) return;
 
             ChangeHealth(_health - amount);
+
             if (_health <= 0)
             {
                 SetState(PlayerState.Death, force: true);
+                _sfxDeath?.Play();            // play death sound once
             }
             else
             {
                 SetState(PlayerState.Hurt, force: true);
+                _sfxHurt?.Play();             // play hurt sound once
             }
         }
 
