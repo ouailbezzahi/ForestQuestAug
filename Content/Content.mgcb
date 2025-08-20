@@ -31,6 +31,12 @@
 /processorParam:Quality=Best
 /build:Audio/forest_menu.mp3
 
+#begin Audio/game_over.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/game_over.wav
+
 #begin Audio/hero_death.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor

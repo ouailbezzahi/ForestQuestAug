@@ -46,11 +46,15 @@ namespace ForestQuest.State
 
         private List<Enemy> _enemies;
 
-        // Nieuw: enemy statistieken
+        // Enemy statistieken + UI
+        private EnemyCounter _enemyCounter;
         private int _totalEnemies;
         private int _enemiesKilled;
         public int TotalEnemies => _totalEnemies;
         public int EnemiesKilled => _enemiesKilled;
+
+        // Game over transition guard
+        private bool _gameOverTriggered;
 
         private int[,] _backgroundTiles = new int[,]
         {
@@ -61,17 +65,11 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
-            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -81,6 +79,7 @@ namespace ForestQuest.State
             { 7, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 1, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
+            { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
             { 7, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 7 },
@@ -157,6 +156,15 @@ namespace ForestQuest.State
 
             _totalEnemies = _enemies.Count;
             _enemiesKilled = 0;
+
+            _enemyCounter = new EnemyCounter(_content);
+            _enemyCounter.Set(_enemiesKilled, _totalEnemies);
+        }
+
+        private void StopFootsteps()
+        {
+            if (_playerMoveSoundInstance != null && _playerMoveSoundInstance.State == SoundState.Playing)
+                _playerMoveSoundInstance.Stop();
         }
 
         public override void Update(GameTime gameTime)
@@ -196,6 +204,7 @@ namespace ForestQuest.State
                 else if (option == 1)
                 {
                     MediaPlayer.Stop();
+                    StopFootsteps();
                     _game.ChangeState(new MenuState(_game, _content, _graphicsDevice));
                     return;
                 }
@@ -220,6 +229,7 @@ namespace ForestQuest.State
                     {
                         enemy.Kill();
                         _enemiesKilled++;
+                        _enemyCounter.Set(_enemiesKilled, _totalEnemies);
                     }
                 }
             }
@@ -241,28 +251,54 @@ namespace ForestQuest.State
                 {
                     _coinManager.Coins.RemoveAt(i);
                     _coinCounter.AddCoins(1);
+                    _coinCount++; // bijhouden voor game over scherm
                 }
             }
 
-            const float footstepInterval = 0.3f;
-            _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
-            bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
-                            keyboardState2.IsKeyDown(Keys.S) || keyboardState2.IsKeyDown(Keys.D);
+            // Footsteps enkel als niet dood en geen game over in gang
+            if (!_gameOverTriggered && !_player.IsDead)
+            {
+                const float footstepInterval = 0.3f;
+                _footstepTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+                bool isMoving = keyboardState2.IsKeyDown(Keys.Z) || keyboardState2.IsKeyDown(Keys.Q) ||
+                                keyboardState2.IsKeyDown(Keys.S) || keyboardState2.IsKeyDown(Keys.D);
 
-            if (isMoving && _footstepTimer >= footstepInterval)
-            {
-                if (_playerMoveSoundInstance.State != SoundState.Playing)
-                    _playerMoveSoundInstance.Play();
-                _footstepTimer = 0f;
+                if (isMoving && _footstepTimer >= footstepInterval)
+                {
+                    if (_playerMoveSoundInstance.State != SoundState.Playing)
+                        _playerMoveSoundInstance.Play();
+                    _footstepTimer = 0f;
+                }
+                else if (!isMoving && _playerMoveSoundInstance.State == SoundState.Playing)
+                {
+                    _playerMoveSoundInstance.Stop();
+                }
             }
-            else if (!isMoving && _playerMoveSoundInstance.State == SoundState.Playing)
+            else
             {
-                _playerMoveSoundInstance.Stop();
+                // Forceer stoppen zodra dood / game over
+                StopFootsteps();
             }
 
             if (_isMultiplayer)
             {
                 // future logic
+            }
+
+            // Game over transition
+            if (!_gameOverTriggered && _player.IsDead)
+            {
+                _gameOverTriggered = true;
+                MediaPlayer.Stop();
+                StopFootsteps();
+                _game.ChangeState(new GameOverState(
+                    _game,
+                    _content,
+                    _graphicsDevice,
+                    coinsCollected: _coinCount,
+                    enemiesKilled: _enemiesKilled,
+                    totalEnemies: _totalEnemies));
+                return;
             }
         }
 
@@ -316,8 +352,7 @@ namespace ForestQuest.State
             spriteBatch.Begin();
             _healthBar.Draw(spriteBatch, _graphicsDevice);
             _coinCounter.Draw(spriteBatch, _graphicsDevice);
-            // (Optioneel) debug weergave:
-            // spriteBatch.DrawString(_someFont, $"Kills: {_enemiesKilled}/{_totalEnemies}", new Vector2(10, 40), Color.White);
+            _enemyCounter?.Draw(spriteBatch);
             if (_isPaused) _pauseMenu.Draw(spriteBatch, _graphicsDevice);
             if (_dialogBox != null && _dialogBox.IsVisible) _dialogBox.Draw(spriteBatch, _graphicsDevice);
             spriteBatch.End();
