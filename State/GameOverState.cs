@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Audio;
+using ForestQuest.Audio; // NEW
 
 namespace ForestQuest.State
 {
@@ -17,50 +18,34 @@ namespace ForestQuest.State
         private int _selectedIndex;
         private KeyboardState _prevKb;
 
-        // Sound
-        private SoundEffect _sfxGameOver;
-        private bool _soundPlayed;
+        // SFX via abstraction (DIP)
+        private readonly IOneShotSfxPlayer _sfx;
 
         public GameOverState(Game1 game,
                              ContentManager content,
                              GraphicsDevice graphicsDevice,
                              int coinsCollected,
                              int enemiesKilled,
-                             int totalEnemies)
+                             int totalEnemies,
+                             IOneShotSfxPlayer? sfxPlayer = null)
             : base(game, content, graphicsDevice)
         {
             _coinsCollected = coinsCollected;
             _enemiesKilled = enemiesKilled;
             _totalEnemies = totalEnemies;
+            _sfx = sfxPlayer ?? new OneShotSfxPlayer(content);
         }
 
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
-
-            try
-            {
-                _sfxGameOver = _content.Load<SoundEffect>("Audio/game_over");
-            }
-            catch
-            {
-                _sfxGameOver = null;
-            }
-
-            PlaySoundOnce();
-        }
-
-        private void PlaySoundOnce()
-        {
-            if (_soundPlayed) return;
-            _sfxGameOver?.Play();
-            _soundPlayed = true;
+            _sfx.TryPlayOnce("Audio/game_over");
         }
 
         public override void Update(GameTime gameTime)
         {
-            // Zorg dat bij herfocussen sound niet opnieuw speelt
-            PlaySoundOnce();
+            // Ensure sound not replayed
+            _sfx.TryPlayOnce("Audio/game_over");
 
             var kb = Keyboard.GetState();
 

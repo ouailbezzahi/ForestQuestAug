@@ -88,8 +88,8 @@ namespace ForestQuest.State
         private SpriteFont _uiFont;
         private Texture2D _pixel;
 
-        // Camera strategy (nieuw)
-        private readonly ICameraStrategy _cameraStrategy = new DynamicSplitCameraStrategy();
+        // Camera strategy (DIP: injectable)
+        private readonly ICameraStrategy _cameraStrategy;
 
         // Enemy factory (nieuw)
         private readonly IEnemyFactory _enemyFactory;
@@ -103,21 +103,33 @@ namespace ForestQuest.State
         private int[,] _backgroundTiles;
 
         // Command-pattern (nieuw)
-        private readonly InputMapper _inputMapper = new();
+        private readonly InputMapper _inputMapper;
         private GameInputContext _inputContext;
         private bool _p1InteractPressed; // per-frame flag i.p.v. direct kb lezen
         private bool _p2InteractPressed; // per-frame flag i.p.v. direct kb lezen
 
-        public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 3)
+        // New: allow dependency injection with safe defaults (DIP)
+        public GameState(
+            Game1 game,
+            ContentManager content,
+            GraphicsDevice graphicsDevice,
+            bool isMultiplayer,
+            int level = 3,
+            IEnemyFactory? enemyFactory = null,
+            ICoinFactory? coinFactory = null,
+            ILevelFactory? levelFactory = null,
+            ICameraStrategy? cameraStrategy = null,
+            InputMapper? inputMapper = null)
             : base(game, content, graphicsDevice)
         {
             _isMultiplayer = isMultiplayer;
             _level = level;
 
-            // init factories
-            _enemyFactory = new EnemyFactory();
-            _coinFactory = new CoinFactory();
-            _levelFactory = new LevelFactory();
+            _enemyFactory = enemyFactory ?? new EnemyFactory();
+            _coinFactory = coinFactory ?? new CoinFactory();
+            _levelFactory = levelFactory ?? new LevelFactory();
+            _cameraStrategy = cameraStrategy ?? new DynamicSplitCameraStrategy();
+            _inputMapper = inputMapper ?? new InputMapper();
         }
 
         public override void LoadContent()
@@ -270,19 +282,46 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Command mapping (per frame) — NIET invasief
+            // Command mapping (per frame)
             _p1InteractPressed = false;
             _p2InteractPressed = false;
             var commands = _inputMapper.Map(kb, _inputContext);
             foreach (var cmd in commands)
                 cmd.Execute();
 
-            // Update players (ongewijzigd, leest nog steeds kb intern)
+            // Update players
             _player.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
             if (_isMultiplayer)
                 _player2.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
-            // Enemies chase the nearest player (use CENTER for accurate ranges)
+            UpdateEnemiesChasing(gameTime);
+            ResolvePlayerEnemyBlocking();
+
+            // Reset per-player hit sets when their attacks finish
+            if (!_player.IsAttackActive && _prevAttackActiveP1)
+                _hitEnemiesP1.Clear();
+            if (_isMultiplayer && !_player2.IsAttackActive && _prevAttackActiveP2)
+                _hitEnemiesP2.Clear();
+
+            HandlePlayerAttacks();
+
+            _prevAttackActiveP1 = _player.IsAttackActive;
+            if (_isMultiplayer) _prevAttackActiveP2 = _player2.IsAttackActive;
+
+            HandleEnemyDamageToPlayers();
+
+            HandleCoins(kb, gameTime);
+
+            UpdateFootsteps(kb, gameTime);
+
+            if (TryTriggerVictory())
+                return;
+
+            TryTriggerGameOver();
+        }
+
+        private void UpdateEnemiesChasing(GameTime gameTime)
+        {
             foreach (var enemy in _enemies)
             {
                 Vector2 target = _player.Center;
@@ -294,8 +333,10 @@ namespace ForestQuest.State
                 }
                 enemy.Update(gameTime, target, _backgroundTiles);
             }
+        }
 
-            // Player <-> enemy blocking
+        private void ResolvePlayerEnemyBlocking()
+        {
             for (int iter = 0; iter < 2; iter++)
             {
                 foreach (var enemy in _enemies)
@@ -303,112 +344,90 @@ namespace ForestQuest.State
                     if (enemy.IsDead) continue;
                     Rectangle eRect = enemy.BoundingBox;
 
-                    Rectangle p1Rect = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                    Rectangle p1Rect = PlayerRect(_player);
                     if (p1Rect.Intersects(eRect))
                         _player.ResolveCollisionWith(eRect, _backgroundTiles);
 
                     if (_isMultiplayer)
                     {
-                        Rectangle p2Rect = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
+                        Rectangle p2Rect = PlayerRect(_player2);
                         if (p2Rect.Intersects(eRect))
                             _player2.ResolveCollisionWith(eRect, _backgroundTiles);
                     }
                 }
             }
+        }
 
-            // Reset per-player hit sets when their attacks finish
-            if (!_player.IsAttackActive && _prevAttackActiveP1)
-                _hitEnemiesP1.Clear();
-            if (_isMultiplayer && !_player2.IsAttackActive && _prevAttackActiveP2)
-                _hitEnemiesP2.Clear();
-
-            // Resolve attacks for both players
+        private void HandlePlayerAttacks()
+        {
             if (_player.IsAttackActive)
-            {
-                Rectangle attackHit = _player.GetAttackHitbox();
-                foreach (var enemy in _enemies)
-                {
-                    if (!enemy.IsDead &&
-                        attackHit.Intersects(enemy.BoundingBox) &&
-                        !_hitEnemiesP1.Contains(enemy))
-                    {
-                        if (enemy.Type == EnemyType.Wolf)
-                            enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
-                        else
-                            enemy.Kill();
-
-                        _hitEnemiesP1.Add(enemy);
-
-                        if (enemy.IsDead)
-                        {
-                            _enemiesKilled++;
-                            _enemyCounter.Set(_enemiesKilled, _totalEnemies);
-                        }
-                    }
-                }
-            }
+                ResolveAttack(_player, _hitEnemiesP1);
 
             if (_isMultiplayer && _player2.IsAttackActive)
+                ResolveAttack(_player2, _hitEnemiesP2);
+        }
+
+        private void ResolveAttack(Player attacker, HashSet<Enemy> perSwingHitSet)
+        {
+            Rectangle attackHit = attacker.GetAttackHitbox();
+            foreach (var enemy in _enemies)
             {
-                Rectangle attackHit = _player2.GetAttackHitbox();
-                foreach (var enemy in _enemies)
+                if (!enemy.IsDead &&
+                    attackHit.Intersects(enemy.BoundingBox) &&
+                    !perSwingHitSet.Contains(enemy))
                 {
-                    if (!enemy.IsDead &&
-                        attackHit.Intersects(enemy.BoundingBox) &&
-                        !_hitEnemiesP2.Contains(enemy))
+                    if (enemy.Type == EnemyType.Wolf)
+                        enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
+                    else
+                        enemy.Kill();
+
+                    perSwingHitSet.Add(enemy);
+
+                    if (enemy.IsDead)
                     {
-                        if (enemy.Type == EnemyType.Wolf)
-                            enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
-                        else
-                            enemy.Kill();
-
-                        _hitEnemiesP2.Add(enemy);
-
-                        if (enemy.IsDead)
-                        {
-                            _enemiesKilled++;
-                            _enemyCounter.Set(_enemiesKilled, _totalEnemies);
-                        }
+                        _enemiesKilled++;
+                        _enemyCounter.Set(_enemiesKilled, _totalEnemies);
                     }
                 }
             }
+        }
 
-            _prevAttackActiveP1 = _player.IsAttackActive;
-            if (_isMultiplayer) _prevAttackActiveP2 = _player2.IsAttackActive;
-
-            // Enemy -> players damage
-            Rectangle p1Rect2 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+        private void HandleEnemyDamageToPlayers()
+        {
+            Rectangle p1Rect2 = PlayerRect(_player);
             foreach (var enemy in _enemies)
                 if (enemy.TryDealDamage(p1Rect2, out int dmg1))
                     _player.ApplyDamage(dmg1);
 
             if (_isMultiplayer)
             {
-                Rectangle p2Rect2 = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
+                Rectangle p2Rect2 = PlayerRect(_player2);
                 foreach (var enemy in _enemies)
                     if (enemy.TryDealDamage(p2Rect2, out int dmg2))
                         _player2.ApplyDamage(dmg2);
             }
+        }
 
-            // Coins (gebruik de command-flag, met fallback naar kb)
+        private void HandleCoins(KeyboardState kb, GameTime gameTime)
+        {
             _coinManager.Update(gameTime);
             for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
             {
                 var coin = _coinManager.Coins[i];
 
                 bool picked = false;
-                Rectangle rect1 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                Rectangle rect1 = PlayerRect(_player);
                 if (coin.BoundingBox.Intersects(rect1) &&
-                    (_p1InteractPressed || Keyboard.GetState().IsKeyDown(_player.Controls.Interact)))
+                    (_p1InteractPressed || kb.IsKeyDown(_player.Controls.Interact)))
                 {
                     picked = true;
                 }
 
                 if (_isMultiplayer && !picked)
                 {
-                    Rectangle rect2 = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
+                    Rectangle rect2 = PlayerRect(_player2);
                     if (coin.BoundingBox.Intersects(rect2) &&
-                        (_p2InteractPressed || Keyboard.GetState().IsKeyDown(_player2.Controls.Interact)))
+                        (_p2InteractPressed || kb.IsKeyDown(_player2.Controls.Interact)))
                     {
                         picked = true;
                     }
@@ -423,8 +442,10 @@ namespace ForestQuest.State
                     _coinPickupSound?.Play(sfxVolume, 0f, 0f);
                 }
             }
+        }
 
-            // Footsteps
+        private void UpdateFootsteps(KeyboardState kb, GameTime gameTime)
+        {
             if (!_gameOverTriggered && !_victoryTriggered && !_player.IsDead && (!_isMultiplayer || !_player2.IsDead))
             {
                 const float footstepInterval = 0.3f;
@@ -451,7 +472,10 @@ namespace ForestQuest.State
             {
                 StopFootsteps();
             }
+        }
 
+        private bool TryTriggerVictory()
+        {
             if (!_victoryTriggered &&
                 (!_player.IsDead || (_isMultiplayer && !_player2.IsDead)) &&
                 _enemiesKilled == _totalEnemies &&
@@ -470,10 +494,13 @@ namespace ForestQuest.State
                     totalCoins: _totalCoins,
                     enemiesKilled: _enemiesKilled,
                     totalEnemies: _totalEnemies));
-                return;
+                return true;
             }
+            return false;
+        }
 
-            // Game over
+        private void TryTriggerGameOver()
+        {
             bool gameOver = !_isMultiplayer ? _player.IsDead : (_player.IsDead && _player2.IsDead);
             if (!_gameOverTriggered && gameOver && !_victoryTriggered)
             {
@@ -489,6 +516,9 @@ namespace ForestQuest.State
                     totalEnemies: _totalEnemies));
             }
         }
+
+        private static Rectangle PlayerRect(Player p) =>
+            new((int)p.Position.X, (int)p.Position.Y, p.FrameWidth, p.FrameHeight);
 
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {

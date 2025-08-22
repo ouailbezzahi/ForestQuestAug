@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Audio;
+using ForestQuest.Audio; // NEW
 
 namespace ForestQuest.State
 {
@@ -21,9 +22,8 @@ namespace ForestQuest.State
         private int _selectedIndex;
         private KeyboardState _prevKb;
 
-        // Victory SFX
-        private SoundEffect _sfxVictory;
-        private bool _soundPlayed;
+        // Victory SFX via abstraction (DIP)
+        private readonly IOneShotSfxPlayer _sfx;
 
         public VictoryState(Game1 game,
                             ContentManager content,
@@ -33,7 +33,8 @@ namespace ForestQuest.State
                             int coinsCollected,
                             int totalCoins,
                             int enemiesKilled,
-                            int totalEnemies)
+                            int totalEnemies,
+                            IOneShotSfxPlayer? sfxPlayer = null)
             : base(game, content, graphicsDevice)
         {
             _currentLevel = currentLevel;
@@ -47,43 +48,21 @@ namespace ForestQuest.State
                 _options = new[] { "Next Level", "Main Menu", "Quit" };
             else
                 _options = new[] { "Main Menu", "Quit" };
+
+            _sfx = sfxPlayer ?? new OneShotSfxPlayer(content);
         }
 
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
-
-            // Try load victory sound (use a fallback name if your asset differs)
-            try
-            {
-                _sfxVictory = _content.Load<SoundEffect>("Audio/victory");
-            }
-            catch
-            {
-                try
-                {
-                    _sfxVictory = _content.Load<SoundEffect>("Audio/level_complete");
-                }
-                catch
-                {
-                    _sfxVictory = null;
-                }
-            }
-
-            PlaySoundOnce();
-        }
-
-        private void PlaySoundOnce()
-        {
-            if (_soundPlayed) return;
-            _sfxVictory?.Play();
-            _soundPlayed = true;
+            // Try load victory sound with fallback, play once
+            _sfx.TryPlayOnce("Audio/victory", "Audio/level_complete");
         }
 
         public override void Update(GameTime gameTime)
         {
             // Ensure sound doesn't replay on refocus
-            PlaySoundOnce();
+            _sfx.TryPlayOnce("Audio/victory", "Audio/level_complete");
 
             var kb = Keyboard.GetState();
 

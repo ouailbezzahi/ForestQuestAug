@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using ForestQuest.State;
+using ForestQuest.World.Background; // NEW
 
 namespace ForestQuest.State
 {
@@ -14,7 +14,7 @@ namespace ForestQuest.State
         private Vector2[] _menuPositions;
         private Rectangle[] _menuBounds;
         private Song _menuMusic;
-        private ScrollingBackground _background;
+        private IScrollingBackground _background; // CHANGED: use abstraction
         private State _nextState;
         private Texture2D _logo;
 
@@ -43,8 +43,9 @@ namespace ForestQuest.State
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_menuMusic);
 
-            // Scrollende achtergrond
-            _background = new ScrollingBackground(_content, _graphicsDevice, "Background/Menu/menu_background", 60f);
+            // Scrollende achtergrond via adapter (no reflection here)
+            var impl = new ForestQuest.World.Background.ScrollingBackground(_content, _graphicsDevice, "Background/Menu/menu_background", 60f);
+            _background = new ForestQuest.World.Background.ScrollingBackgroundAdapter(impl);
 
             // Calculate centered positions for menu options
             UpdateMenuLayout();
@@ -173,15 +174,16 @@ namespace ForestQuest.State
             _graphicsDevice.Clear(Color.Black);
 
             spriteBatch.Begin();
+
             // Achtergrond vullen over het hele scherm
-            int texWidth = _background != null ? _backgroundTextureWidth() : 0;
+            int texWidth = _background.TextureWidth;
             int screenWidth = _graphicsDevice.Viewport.Width;
             int screenHeight = _graphicsDevice.Viewport.Height;
-            float offset = _background != null ? _backgroundOffset() : 0f;
+            float offset = _background.Offset;
             float x = -offset;
             while (x < screenWidth)
             {
-                spriteBatch.Draw(_backgroundTexture(), new Rectangle((int)x, 0, texWidth, screenHeight), Color.White);
+                spriteBatch.Draw(_background.Texture, new Rectangle((int)x, 0, texWidth, screenHeight), Color.White);
                 x += texWidth;
             }
 
@@ -254,23 +256,6 @@ namespace ForestQuest.State
                 currentY += buttonHeight + (int)spacing;
             }
             spriteBatch.End();
-        }
-
-        // Helper methodes om bij de texture en offset van de achtergrond te komen
-        private Texture2D _backgroundTexture()
-        {
-            // Toegang tot de texture van ScrollingBackground
-            var field = typeof(ScrollingBackground).GetField("_texture", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return (Texture2D)field.GetValue(_background);
-        }
-        private float _backgroundOffset()
-        {
-            var field = typeof(ScrollingBackground).GetField("_offset", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return (float)field.GetValue(_background);
-        }
-        private int _backgroundTextureWidth()
-        {
-            return _backgroundTexture().Width;
         }
     }
 }
