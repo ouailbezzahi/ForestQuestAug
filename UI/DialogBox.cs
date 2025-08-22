@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Input;
 
 namespace ForestQuest.UI
@@ -14,6 +14,9 @@ namespace ForestQuest.UI
         private int _currentLine = 0;
         private bool _isVisible = true;
         private KeyboardState _prevState;
+
+        // NEW: reusable 1x1 pixel (lazy init since we don't have GraphicsDevice in ctor)
+        private Texture2D _pixel;
 
         public DialogBox(ContentManager content, string text)
         {
@@ -42,6 +45,12 @@ namespace ForestQuest.UI
         {
             if (!_isVisible) return;
 
+            if (_pixel == null)
+            {
+                _pixel = new Texture2D(graphicsDevice, 1, 1);
+                _pixel.SetData(new[] { Color.White });
+            }
+
             float screenWidth = graphicsDevice.Viewport.Width;
             float screenHeight = graphicsDevice.Viewport.Height;
             float popupWidth = 750f;
@@ -49,10 +58,8 @@ namespace ForestQuest.UI
             float popupX = (screenWidth - popupWidth) / 2;
             float popupY = screenHeight - popupHeight - 40;
 
-            // Donkere overlay zoals PauseMenu, maar met lagere alpha zodat de game goed zichtbaar blijft
-            Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
-            overlay.SetData(new[] { Color.White });
-            spriteBatch.Draw(overlay, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.35f);
+            // Donkere overlay
+            spriteBatch.Draw(_pixel, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.35f);
 
             // Dialogbox background
             spriteBatch.Draw(_background, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.White * 0.85f);

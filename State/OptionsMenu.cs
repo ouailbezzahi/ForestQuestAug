@@ -28,10 +28,13 @@ namespace ForestQuest.State
         public OptionsMenu(ContentManager content, GraphicsDevice graphicsDevice)
         {
             _font = content.Load<SpriteFont>("Fonts/Font");
+
+            // Reusable 1x1 textures
             _sliderBar = new Texture2D(graphicsDevice, 1, 1);
             _sliderBar.SetData(new[] { Color.White });
             _sliderKnob = new Texture2D(graphicsDevice, 1, 1);
             _sliderKnob.SetData(new[] { Color.Gray });
+
             CalculateLayout(graphicsDevice);
         }
 
@@ -112,14 +115,10 @@ namespace ForestQuest.State
             _backButton = new Rectangle((int)(popupX + (popupWidth - 120) / 2), (int)(popupY + popupHeight - 50), 120, 32);
 
             // Overlay
-            Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
-            overlay.SetData(new[] { new Color(0, 0, 0, 0.7f) });
-            spriteBatch.Draw(overlay, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.7f);
+            spriteBatch.Draw(_sliderBar, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.7f);
 
             // Popup
-            Texture2D popup = new Texture2D(graphicsDevice, 1, 1);
-            popup.SetData(new[] { Color.DarkSlateGray });
-            spriteBatch.Draw(popup, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.DarkSlateGray);
+            spriteBatch.Draw(_sliderBar, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.DarkSlateGray);
 
             // Titel
             string title = "Options";
@@ -137,12 +136,10 @@ namespace ForestQuest.State
             spriteBatch.Draw(_sliderKnob, _sfxKnob, Color.Orange);
 
             // Back button
-            Texture2D btn = new Texture2D(graphicsDevice, 1, 1);
-            btn.SetData(new[] { Color.Gray });
-            spriteBatch.Draw(btn, _backButton, Color.Gray);
+            spriteBatch.Draw(_sliderBar, _backButton, Color.Gray);
             string backText = "Back";
             Vector2 backSize = _font.MeasureString(backText);
             spriteBatch.DrawString(_font, backText, new Vector2(_backButton.X + (_backButton.Width - backSize.X) / 2, _backButton.Y + 4), Color.White);
         }
     }
-} 
+}

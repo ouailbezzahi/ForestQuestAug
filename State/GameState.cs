@@ -11,12 +11,14 @@ using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
 using System;
-using ForestQuest.World.Camera; // + toegevoegd
-using ForestQuest.Entities.Enemies.Factory; // + factory
-using ForestQuest.Items.Coin.Factory; // + coin factory
-using ForestQuest.World.Levels; // + level factory
-using ForestQuest.Input; // + command input
-using ForestQuest.Input.Commands; // + commands
+using ForestQuest.World.Camera;
+using ForestQuest.Entities.Enemies.Factory;
+using ForestQuest.Items.Coin.Factory;
+using ForestQuest.World.Levels;
+using ForestQuest.Input;
+using ForestQuest.Input.Commands;
+using ForestQuest.Physics;          // NEW
+using ForestQuest.Combat;           // NEW
 
 namespace ForestQuest.State
 {
@@ -72,12 +74,6 @@ namespace ForestQuest.State
         private BossHealthBar? _bossHealthBar;
         private const int PLAYER_WOLF_ATTACK_DAMAGE = 20;
 
-        // Track enemies hit per player's attack
-        private readonly HashSet<Enemy> _hitEnemiesP1 = new();
-        private readonly HashSet<Enemy> _hitEnemiesP2 = new();
-        private bool _prevAttackActiveP1;
-        private bool _prevAttackActiveP2;
-
         // State
         private bool _gameOverTriggered;
         private bool _victoryTriggered;
@@ -88,27 +84,27 @@ namespace ForestQuest.State
         private SpriteFont _uiFont;
         private Texture2D _pixel;
 
-        // Camera strategy (DIP: injectable)
+        // Camera strategy (DIP)
         private readonly ICameraStrategy _cameraStrategy;
 
-        // Enemy factory (nieuw)
+        // Factories (DIP)
         private readonly IEnemyFactory _enemyFactory;
-
-        // Coin factory (nieuw)
         private readonly ICoinFactory _coinFactory;
-
-        // Level factory (nieuw)
         private readonly ILevelFactory _levelFactory;
+
         private LevelData _levelData;
         private int[,] _backgroundTiles;
 
-        // Command-pattern (nieuw)
+        // Input mapping
         private readonly InputMapper _inputMapper;
         private GameInputContext _inputContext;
-        private bool _p1InteractPressed; // per-frame flag i.p.v. direct kb lezen
-        private bool _p2InteractPressed; // per-frame flag i.p.v. direct kb lezen
+        private bool _p1InteractPressed;
+        private bool _p2InteractPressed;
 
-        // New: allow dependency injection with safe defaults (DIP)
+        // NEW: Services (DIP)
+        private readonly ICollisionResolver _collisionResolver;
+        private readonly ICombatResolver _combatResolver;
+
         public GameState(
             Game1 game,
             ContentManager content,
@@ -119,7 +115,9 @@ namespace ForestQuest.State
             ICoinFactory? coinFactory = null,
             ILevelFactory? levelFactory = null,
             ICameraStrategy? cameraStrategy = null,
-            InputMapper? inputMapper = null)
+            InputMapper? inputMapper = null,
+            ICollisionResolver? collisionResolver = null,   // NEW
+            ICombatResolver? combatResolver = null)         // NEW
             : base(game, content, graphicsDevice)
         {
             _isMultiplayer = isMultiplayer;
@@ -130,11 +128,14 @@ namespace ForestQuest.State
             _levelFactory = levelFactory ?? new LevelFactory();
             _cameraStrategy = cameraStrategy ?? new DynamicSplitCameraStrategy();
             _inputMapper = inputMapper ?? new InputMapper();
+
+            _collisionResolver = collisionResolver ?? new DefaultCollisionResolver();
+            _combatResolver = combatResolver ?? new DefaultCombatResolver(PLAYER_WOLF_ATTACK_DAMAGE);
         }
 
         public override void LoadContent()
         {
-            // Level data ophalen (tegels, startposities, coin-spawn)
+            // Level data
             _levelData = _levelFactory.Create(_level);
             _backgroundTiles = _levelData.Tiles;
 
@@ -159,7 +160,7 @@ namespace ForestQuest.State
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
-            // Startposities uit leveldata (identiek aan voorheen)
+            // Players
             _player = new Player(_levelData.Player1Start, PlayerControls.Default1, _level);
             _player.LoadContent(_content);
 
@@ -169,7 +170,7 @@ namespace ForestQuest.State
                 _player2.LoadContent(_content);
             }
 
-            // Command context koppelen (kan pas na players)
+            // Command context
             _inputContext = new GameInputContext(
                 _player,
                 _player2,
@@ -196,7 +197,6 @@ namespace ForestQuest.State
             int mapWidth = _backgroundTiles.GetLength(1) * tileSize;
             int mapHeight = _backgroundTiles.GetLength(0) * tileSize;
 
-            // Zelfde coins-spawn logica, maar via leveldata
             int coinSpawn = _levelData.CoinSpawnCount;
             _coinManager = _coinFactory.Create(_content, mapWidth / tileSize, mapHeight / tileSize, coinSpawn);
             _coinCounter = new CoinCounter(_content);
@@ -206,7 +206,6 @@ namespace ForestQuest.State
                 ? new DialogBox(_content, "Welkom in Forest Quest! ... (Level 1)")
                 : null;
 
-            // Enemies via factory (zelfde spawns/gedrag als voorheen)
             _enemies = _enemyFactory.CreateForLevel(_content, _level);
 
             _totalEnemies = _enemies.Count;
@@ -225,10 +224,15 @@ namespace ForestQuest.State
                 _bossEnemy.OnHealthChanged += (cur, max) => _bossHealthBar.Set(cur, max);
             }
 
-            // UI helpers
             _uiFont = _content.Load<SpriteFont>("Fonts/Font");
             _pixel = new Texture2D(_graphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
+
+            // Inform combat resolver about players instance (lifecycle bound to this state)
+            if (_combatResolver is DefaultCombatResolver dcr)
+            {
+                dcr.SetPlayers(_player, _isMultiplayer ? _player2 : null);
+            }
         }
 
         private void StopFootsteps()
@@ -282,7 +286,7 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Command mapping (per frame)
+            // Commands
             _p1InteractPressed = false;
             _p2InteractPressed = false;
             var commands = _inputMapper.Map(kb, _inputContext);
@@ -294,34 +298,7 @@ namespace ForestQuest.State
             if (_isMultiplayer)
                 _player2.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
-            UpdateEnemiesChasing(gameTime);
-            ResolvePlayerEnemyBlocking();
-
-            // Reset per-player hit sets when their attacks finish
-            if (!_player.IsAttackActive && _prevAttackActiveP1)
-                _hitEnemiesP1.Clear();
-            if (_isMultiplayer && !_player2.IsAttackActive && _prevAttackActiveP2)
-                _hitEnemiesP2.Clear();
-
-            HandlePlayerAttacks();
-
-            _prevAttackActiveP1 = _player.IsAttackActive;
-            if (_isMultiplayer) _prevAttackActiveP2 = _player2.IsAttackActive;
-
-            HandleEnemyDamageToPlayers();
-
-            HandleCoins(kb, gameTime);
-
-            UpdateFootsteps(kb, gameTime);
-
-            if (TryTriggerVictory())
-                return;
-
-            TryTriggerGameOver();
-        }
-
-        private void UpdateEnemiesChasing(GameTime gameTime)
-        {
+            // Enemies chase nearest player
             foreach (var enemy in _enemies)
             {
                 Vector2 target = _player.Center;
@@ -333,79 +310,41 @@ namespace ForestQuest.State
                 }
                 enemy.Update(gameTime, target, _backgroundTiles);
             }
-        }
 
-        private void ResolvePlayerEnemyBlocking()
-        {
-            for (int iter = 0; iter < 2; iter++)
+            // Collision: players vs enemies
+            _collisionResolver.ResolvePlayersVsEnemies(
+                _player,
+                _isMultiplayer ? _player2 : null,
+                _enemies,
+                _backgroundTiles);
+
+            // Combat: clear per-swing tracking if attack ended
+            _combatResolver.BeforeAttacks(_player, _isMultiplayer ? _player2 : null);
+
+            // Combat: player attacks
+            int killedNow = _combatResolver.ResolvePlayerAttacks(_enemies);
+            if (killedNow > 0)
             {
-                foreach (var enemy in _enemies)
-                {
-                    if (enemy.IsDead) continue;
-                    Rectangle eRect = enemy.BoundingBox;
-
-                    Rectangle p1Rect = PlayerRect(_player);
-                    if (p1Rect.Intersects(eRect))
-                        _player.ResolveCollisionWith(eRect, _backgroundTiles);
-
-                    if (_isMultiplayer)
-                    {
-                        Rectangle p2Rect = PlayerRect(_player2);
-                        if (p2Rect.Intersects(eRect))
-                            _player2.ResolveCollisionWith(eRect, _backgroundTiles);
-                    }
-                }
+                _enemiesKilled += killedNow;
+                _enemyCounter.Set(_enemiesKilled, _totalEnemies);
             }
-        }
 
-        private void HandlePlayerAttacks()
-        {
-            if (_player.IsAttackActive)
-                ResolveAttack(_player, _hitEnemiesP1);
+            // Record current attack flags
+            _combatResolver.AfterAttacks(_player, _isMultiplayer ? _player2 : null);
 
-            if (_isMultiplayer && _player2.IsAttackActive)
-                ResolveAttack(_player2, _hitEnemiesP2);
-        }
+            // Combat: enemies damage players
+            _combatResolver.ResolveEnemyDamageToPlayers(_enemies, _player, _isMultiplayer ? _player2 : null);
 
-        private void ResolveAttack(Player attacker, HashSet<Enemy> perSwingHitSet)
-        {
-            Rectangle attackHit = attacker.GetAttackHitbox();
-            foreach (var enemy in _enemies)
-            {
-                if (!enemy.IsDead &&
-                    attackHit.Intersects(enemy.BoundingBox) &&
-                    !perSwingHitSet.Contains(enemy))
-                {
-                    if (enemy.Type == EnemyType.Wolf)
-                        enemy.ApplyDamage(PLAYER_WOLF_ATTACK_DAMAGE);
-                    else
-                        enemy.Kill();
+            // Coins
+            HandleCoins(kb, gameTime);
 
-                    perSwingHitSet.Add(enemy);
+            // Footsteps
+            UpdateFootsteps(kb, gameTime);
 
-                    if (enemy.IsDead)
-                    {
-                        _enemiesKilled++;
-                        _enemyCounter.Set(_enemiesKilled, _totalEnemies);
-                    }
-                }
-            }
-        }
+            if (TryTriggerVictory())
+                return;
 
-        private void HandleEnemyDamageToPlayers()
-        {
-            Rectangle p1Rect2 = PlayerRect(_player);
-            foreach (var enemy in _enemies)
-                if (enemy.TryDealDamage(p1Rect2, out int dmg1))
-                    _player.ApplyDamage(dmg1);
-
-            if (_isMultiplayer)
-            {
-                Rectangle p2Rect2 = PlayerRect(_player2);
-                foreach (var enemy in _enemies)
-                    if (enemy.TryDealDamage(p2Rect2, out int dmg2))
-                        _player2.ApplyDamage(dmg2);
-            }
+            TryTriggerGameOver();
         }
 
         private void HandleCoins(KeyboardState kb, GameTime gameTime)
@@ -416,7 +355,7 @@ namespace ForestQuest.State
                 var coin = _coinManager.Coins[i];
 
                 bool picked = false;
-                Rectangle rect1 = PlayerRect(_player);
+                Rectangle rect1 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
                 if (coin.BoundingBox.Intersects(rect1) &&
                     (_p1InteractPressed || kb.IsKeyDown(_player.Controls.Interact)))
                 {
@@ -425,7 +364,7 @@ namespace ForestQuest.State
 
                 if (_isMultiplayer && !picked)
                 {
-                    Rectangle rect2 = PlayerRect(_player2);
+                    Rectangle rect2 = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
                     if (coin.BoundingBox.Intersects(rect2) &&
                         (_p2InteractPressed || kb.IsKeyDown(_player2.Controls.Interact)))
                     {

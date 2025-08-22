@@ -14,12 +14,18 @@ namespace ForestQuest.State
         private int _selectedIndex = -1;
         private bool _mouseWasPressed = false;
 
+        // NEW: reusable 1x1 pixel
+        private readonly Texture2D _pixel;
+
         public PauseMenu(ContentManager content, GraphicsDevice graphicsDevice)
         {
             _font = content.Load<SpriteFont>("Fonts/Font");
             _optionPositions = new Vector2[_options.Length];
             _optionBounds = new Rectangle[_options.Length];
             CalculatePositions(graphicsDevice);
+
+            _pixel = new Texture2D(graphicsDevice, 1, 1);
+            _pixel.SetData(new[] { Color.White });
         }
 
         private void CalculatePositions(GraphicsDevice graphicsDevice)
@@ -72,7 +78,7 @@ namespace ForestQuest.State
                 _mouseWasPressed = false;
             }
 
-            // Keyboard (optioneel: pijltjes en enter)
+            // Keyboard (zelfde gedrag behouden)
             KeyboardState keyboard = Keyboard.GetState();
             if (keyboard.IsKeyDown(Keys.Down))
             {
@@ -117,14 +123,10 @@ namespace ForestQuest.State
             }
 
             // Donkere overlay
-            Texture2D overlay = new Texture2D(graphicsDevice, 1, 1);
-            overlay.SetData(new[] { new Color(0, 0, 0, 0.7f) });
-            spriteBatch.Draw(overlay, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.7f);
+            spriteBatch.Draw(_pixel, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.7f);
 
             // Popup venster
-            Texture2D popup = new Texture2D(graphicsDevice, 1, 1);
-            popup.SetData(new[] { Color.Gray });
-            spriteBatch.Draw(popup, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.Gray);
+            spriteBatch.Draw(_pixel, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.Gray);
 
             // Titel
             string title = "Paused";
@@ -150,9 +152,7 @@ namespace ForestQuest.State
                         buttonColor = new Color(40, 40, 40, 210); // hover/selected
                 }
 
-                Texture2D rectTex = new Texture2D(graphicsDevice, 1, 1);
-                rectTex.SetData(new[] { Color.White });
-                spriteBatch.Draw(rectTex, buttonRect, buttonColor);
+                spriteBatch.Draw(_pixel, buttonRect, buttonColor);
 
                 Vector2 textPos = new Vector2(
                     buttonRect.X + (buttonRect.Width - rect.Width) / 2,
@@ -162,4 +162,4 @@ namespace ForestQuest.State
             }
         }
     }
-} 
+}

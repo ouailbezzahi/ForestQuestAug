@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using ForestQuest.State;
 using ForestQuest.World.Background; // NEW
 
 namespace ForestQuest.State
@@ -23,6 +24,9 @@ namespace ForestQuest.State
         // Keyboard navigation
         private int _selectedIndex = 0;
         private KeyboardState _prevKeyboard;
+
+        // NEW: reusable 1x1 pixel
+        private Texture2D _pixel;
 
         public MenuState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice)
             : base(game, content, graphicsDevice)
@@ -46,6 +50,10 @@ namespace ForestQuest.State
             // Scrollende achtergrond via adapter (no reflection here)
             var impl = new ForestQuest.World.Background.ScrollingBackground(_content, _graphicsDevice, "Background/Menu/menu_background", 60f);
             _background = new ForestQuest.World.Background.ScrollingBackgroundAdapter(impl);
+
+            // 1x1 pixel
+            _pixel = new Texture2D(_graphicsDevice, 1, 1);
+            _pixel.SetData(new[] { Color.White });
 
             // Calculate centered positions for menu options
             UpdateMenuLayout();
@@ -229,22 +237,21 @@ namespace ForestQuest.State
                 else if (selected)
                     buttonColor = new Color(70, 70, 110, 210);   // keyboard-selected
 
-                Texture2D rectTex = new Texture2D(_graphicsDevice, 1, 1);
-                rectTex.SetData(new[] { Color.White });
-                spriteBatch.Draw(rectTex, buttonRect, buttonColor);
+                // draw filled button
+                spriteBatch.Draw(_pixel, buttonRect, buttonColor);
 
-                // Optional: draw a light outline when selected
+                // Optional: outline when selected
                 if (selected)
                 {
                     Color outline = new Color(180, 200, 255, 220);
                     // top
-                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Y, buttonRect.Width, 2), outline);
+                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Y, buttonRect.Width, 2), outline);
                     // bottom
-                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Bottom - 2, buttonRect.Width, 2), outline);
+                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Bottom - 2, buttonRect.Width, 2), outline);
                     // left
-                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Y, 2, buttonRect.Height), outline);
+                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Y, 2, buttonRect.Height), outline);
                     // right
-                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.Right - 2, buttonRect.Y, 2, buttonRect.Height), outline);
+                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.Right - 2, buttonRect.Y, 2, buttonRect.Height), outline);
                 }
 
                 Vector2 textPos = new Vector2(
