@@ -12,6 +12,7 @@ using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
 using System;
 using ForestQuest.World.Camera; // + toegevoegd
+using ForestQuest.Entities.Enemies.Factory; // + factory
 
 namespace ForestQuest.State
 {
@@ -86,6 +87,9 @@ namespace ForestQuest.State
         // Camera strategy (nieuw)
         private readonly ICameraStrategy _cameraStrategy = new DynamicSplitCameraStrategy();
 
+        // Enemy factory (nieuw)
+        private readonly IEnemyFactory _enemyFactory;
+
         private int[,] _backgroundTiles = new int[,]
         {
             { 3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,5 },
@@ -113,7 +117,6 @@ namespace ForestQuest.State
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,7 },
@@ -127,6 +130,9 @@ namespace ForestQuest.State
         {
             _isMultiplayer = isMultiplayer;
             _level = level;
+
+            // init factory
+            _enemyFactory = new EnemyFactory();
         }
 
         public override void LoadContent()
@@ -195,52 +201,8 @@ namespace ForestQuest.State
                 ? new DialogBox(_content, "Welkom in Forest Quest! ... (Level 1)")
                 : null;
 
-            _enemies = new List<Enemy>();
-
-            if (_level == 1)
-            {
-                var catSpawns = new[]
-                {
-                    new Vector2(100,100),
-                    new Vector2(300,100),
-                    new Vector2(500,100),
-                    new Vector2(100,300),
-                    new Vector2(300,300)
-                };
-                foreach (var pos in catSpawns)
-                {
-                    var e = new Enemy(pos, EnemyType.Cat, 1);
-                    e.LoadContent(_content);
-                    _enemies.Add(e);
-                }
-            }
-            else if (_level == 2)
-            {
-                var dogSpawns = new[]
-                {
-                    new Vector2(120,120),
-                    new Vector2(480,140),
-                    new Vector2(720,180),
-                    new Vector2(200,420),
-                    new Vector2(520,440),
-                    new Vector2(840,300),
-                    new Vector2(300,600),
-                    new Vector2(660,620)
-                };
-                foreach (var pos in dogSpawns)
-                {
-                    var e = new Enemy(pos, EnemyType.Dog, 2);
-                    e.LoadContent(_content);
-                    _enemies.Add(e);
-                }
-            }
-            else if (_level == 3)
-            {
-                var wolf = new Enemy(new Vector2(600, 400), EnemyType.Wolf, 3);
-                wolf.LoadContent(_content);
-                _enemies.Add(wolf);
-                // (Eventueel extra dogs toevoegen)
-            }
+            // Enemies via factory (zelfde spawns/gedrag als voorheen)
+            _enemies = _enemyFactory.CreateForLevel(_content, _level);
 
             _totalEnemies = _enemies.Count;
             _enemiesKilled = 0;
