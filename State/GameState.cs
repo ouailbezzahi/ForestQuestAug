@@ -10,6 +10,7 @@ using ForestQuest.Items.Coin;
 using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
+using System;
 
 namespace ForestQuest.State
 {
@@ -94,6 +95,7 @@ namespace ForestQuest.State
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
@@ -103,7 +105,6 @@ namespace ForestQuest.State
             { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
             { 7,2,2,1,1,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
@@ -474,7 +475,8 @@ namespace ForestQuest.State
                     _game,
                     _content,
                     _graphicsDevice,
-                    _level,
+                    currentLevel: _level,
+                    isMultiplayer: _isMultiplayer,
                     coinsCollected: _coinCount,
                     totalCoins: _totalCoins,
                     enemiesKilled: _enemiesKilled,
@@ -665,6 +667,7 @@ namespace ForestQuest.State
             int margin = 16;
             int panelWidth = 260;   // UI panel width for a bar
             int blockHeight = 60;   // enough for "Player X" + bar
+            int p2ExtraOffset = 48; // extra spacing between P1 and P2 (increase to move P2 lower)
 
             var prevVp = _graphicsDevice.Viewport;
 
@@ -683,10 +686,13 @@ namespace ForestQuest.State
 
             if (_isMultiplayer && _healthBar2 != null)
             {
-                // Player 2 (under Player 1)
+                // Player 2 (under Player 1 with extra spacing, clamped to screen)
+                int p2Y = vpP1.Y + blockHeight + p2ExtraOffset;
+                p2Y = Math.Min(full.Y + full.Height - blockHeight - margin, p2Y);
+
                 var vpP2 = new Viewport(
                     full.X + full.Width - panelWidth - margin,
-                    vpP1.Y + blockHeight + 6,
+                    p2Y,
                     panelWidth,
                     blockHeight
                 );

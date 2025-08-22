@@ -9,16 +9,19 @@ namespace ForestQuest.State
     public class VictoryState : State
     {
         private readonly int _currentLevel;
+        private readonly bool _isMultiplayer;
         private readonly int _coinsCollected;
         private readonly int _totalCoins;
         private readonly int _enemiesKilled;
         private readonly int _totalEnemies;
 
         private SpriteFont _font;
+
         private string[] _options;
         private int _selectedIndex;
         private KeyboardState _prevKb;
 
+        // Victory SFX
         private SoundEffect _sfxVictory;
         private bool _soundPlayed;
 
@@ -26,6 +29,7 @@ namespace ForestQuest.State
                             ContentManager content,
                             GraphicsDevice graphicsDevice,
                             int currentLevel,
+                            bool isMultiplayer,
                             int coinsCollected,
                             int totalCoins,
                             int enemiesKilled,
@@ -33,20 +37,38 @@ namespace ForestQuest.State
             : base(game, content, graphicsDevice)
         {
             _currentLevel = currentLevel;
+            _isMultiplayer = isMultiplayer;
             _coinsCollected = coinsCollected;
             _totalCoins = totalCoins;
             _enemiesKilled = enemiesKilled;
             _totalEnemies = totalEnemies;
+
+            if (_currentLevel < 3)
+                _options = new[] { "Next Level", "Main Menu", "Quit" };
+            else
+                _options = new[] { "Main Menu", "Quit" };
         }
 
         public override void LoadContent()
         {
             _font = _content.Load<SpriteFont>("Fonts/Font");
-            try { _sfxVictory = _content.Load<SoundEffect>("Audio/victory"); } catch { _sfxVictory = null; }
 
-            _options = _currentLevel < 3
-                ? new[] { "Next Level", "Play Again", "Quit" }
-                : new[] { "Play Again", "Quit" };
+            // Try load victory sound (use a fallback name if your asset differs)
+            try
+            {
+                _sfxVictory = _content.Load<SoundEffect>("Audio/victory");
+            }
+            catch
+            {
+                try
+                {
+                    _sfxVictory = _content.Load<SoundEffect>("Audio/level_complete");
+                }
+                catch
+                {
+                    _sfxVictory = null;
+                }
+            }
 
             PlaySoundOnce();
         }
@@ -60,40 +82,39 @@ namespace ForestQuest.State
 
         public override void Update(GameTime gameTime)
         {
+            // Ensure sound doesn't replay on refocus
             PlaySoundOnce();
 
             var kb = Keyboard.GetState();
-            bool up = kb.IsKeyDown(Keys.Up) && _prevKb.IsKeyUp(Keys.Up);
-            bool down = kb.IsKeyDown(Keys.Down) && _prevKb.IsKeyUp(Keys.Down);
-            bool enter = kb.IsKeyDown(Keys.Enter) && _prevKb.IsKeyUp(Keys.Enter);
 
-            if (up) _selectedIndex = (_selectedIndex - 1 + _options.Length) % _options.Length;
-            if (down) _selectedIndex = (_selectedIndex + 1) % _options.Length;
+            bool upPressed = kb.IsKeyDown(Keys.Up) && _prevKb.IsKeyUp(Keys.Up);
+            bool downPressed = kb.IsKeyDown(Keys.Down) && _prevKb.IsKeyUp(Keys.Down);
+            bool enterPressed = kb.IsKeyDown(Keys.Enter) && _prevKb.IsKeyUp(Keys.Enter);
 
-            if (enter)
+            if (upPressed)
+                _selectedIndex = (_selectedIndex - 1 + _options.Length) % _options.Length;
+
+            if (downPressed)
+                _selectedIndex = (_selectedIndex + 1) % _options.Length;
+
+            if (enterPressed)
             {
-                if (_currentLevel < 3)
+                var choice = _options[_selectedIndex];
+                if (choice == "Next Level")
                 {
-                    switch (_selectedIndex)
-                    {
-                        case 0: // Next Level
-                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, _currentLevel + 1));
-                            return;
-                        case 1: // Play Again (same level)
-                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, _currentLevel));
-                            return;
-                        case 2: _game.Exit(); return;
-                    }
+                    int nextLevel = _currentLevel + 1;
+                    _game.ChangeState(new GameState(_game, _content, _graphicsDevice, isMultiplayer: _isMultiplayer, level: nextLevel));
+                    return;
                 }
-                else
+                else if (choice == "Main Menu")
                 {
-                    switch (_selectedIndex)
-                    {
-                        case 0: // Play Again (restart level 1)
-                            _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, 1));
-                            return;
-                        case 1: _game.Exit(); return;
-                    }
+                    _game.ChangeState(new MenuState(_game, _content, _graphicsDevice));
+                    return;
+                }
+                else if (choice == "Quit")
+                {
+                    _game.Exit();
+                    return;
                 }
             }
 
@@ -105,30 +126,23 @@ namespace ForestQuest.State
             _graphicsDevice.Clear(Color.Black);
             spriteBatch.Begin();
 
-            string title = "VICTORY";
-            string stats1 = $"Coins:   {_coinsCollected}/{_totalCoins}";
-            string stats2 = $"Enemies: {_enemiesKilled}/{_totalEnemies}";
-            string levelInfo = $"Level:   {_currentLevel}";
+            string title = $"Level {_currentLevel} Completed!";
+            Vector2 ts = _font.MeasureString(title);
+            float cx = _graphicsDevice.Viewport.Width / 2f;
+            float cy = _graphicsDevice.Viewport.Height / 4f;
 
-            var vp = _graphicsDevice.Viewport;
-            Vector2 center = new(vp.Width / 2f, vp.Height / 2f);
+            spriteBatch.DrawString(_font, title, new Vector2(cx - ts.X / 2f, cy), Color.Gold);
 
-            Vector2 titleSize = _font.MeasureString(title);
-            Vector2 titlePos = center - new Vector2(titleSize.X / 2f, 200);
-            spriteBatch.DrawString(_font, title, titlePos, Color.Gold);
+            string stats = $"Coins: {_coinsCollected}/{_totalCoins}   Enemies: {_enemiesKilled}/{_totalEnemies}";
+            Vector2 ss = _font.MeasureString(stats);
+            spriteBatch.DrawString(_font, stats, new Vector2(cx - ss.X / 2f, cy + ts.Y + 10), Color.White);
 
-            spriteBatch.DrawString(_font, levelInfo, center - new Vector2(_font.MeasureString(levelInfo).X / 2f, 140), Color.White);
-            spriteBatch.DrawString(_font, stats1, center - new Vector2(_font.MeasureString(stats1).X / 2f, 110), Color.White);
-            spriteBatch.DrawString(_font, stats2, center - new Vector2(_font.MeasureString(stats2).X / 2f, 80), Color.White);
-
-            float startY = center.Y - 10;
+            float startY = cy + ts.Y + ss.Y + 40;
             for (int i = 0; i < _options.Length; i++)
             {
-                string opt = _options[i];
-                Vector2 size = _font.MeasureString(opt);
-                Vector2 pos = new(center.X - size.X / 2f, startY + i * 40);
-                Color col = (i == _selectedIndex) ? Color.Yellow : Color.Gray;
-                spriteBatch.DrawString(_font, opt, pos, col);
+                string opt = (i == _selectedIndex ? "> " : "  ") + _options[i];
+                Vector2 os = _font.MeasureString(opt);
+                spriteBatch.DrawString(_font, opt, new Vector2(cx - os.X / 2f, startY + i * 30f), i == _selectedIndex ? Color.Yellow : Color.White);
             }
 
             spriteBatch.End();
