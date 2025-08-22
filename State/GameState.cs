@@ -15,6 +15,8 @@ using ForestQuest.World.Camera; // + toegevoegd
 using ForestQuest.Entities.Enemies.Factory; // + factory
 using ForestQuest.Items.Coin.Factory; // + coin factory
 using ForestQuest.World.Levels; // + level factory
+using ForestQuest.Input; // + command input
+using ForestQuest.Input.Commands; // + commands
 
 namespace ForestQuest.State
 {
@@ -100,6 +102,12 @@ namespace ForestQuest.State
         private LevelData _levelData;
         private int[,] _backgroundTiles;
 
+        // Command-pattern (nieuw)
+        private readonly InputMapper _inputMapper = new();
+        private GameInputContext _inputContext;
+        private bool _p1InteractPressed; // per-frame flag i.p.v. direct kb lezen
+        private bool _p2InteractPressed; // per-frame flag i.p.v. direct kb lezen
+
         public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 3)
             : base(game, content, graphicsDevice)
         {
@@ -148,6 +156,15 @@ namespace ForestQuest.State
                 _player2 = new Player(_levelData.Player2Start, PlayerControls.Default2, _level);
                 _player2.LoadContent(_content);
             }
+
+            // Command context koppelen (kan pas na players)
+            _inputContext = new GameInputContext(
+                _player,
+                _player2,
+                _isMultiplayer,
+                setP1Interact: pressed => _p1InteractPressed = pressed,
+                setP2Interact: pressed => _p2InteractPressed = pressed
+            );
 
             _healthBar = new HealthBar(_content, 100);
             _healthBar.SetHealth(_player.Health);
@@ -253,7 +270,14 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Update players
+            // Command mapping (per frame) — NIET invasief
+            _p1InteractPressed = false;
+            _p2InteractPressed = false;
+            var commands = _inputMapper.Map(kb, _inputContext);
+            foreach (var cmd in commands)
+                cmd.Execute();
+
+            // Update players (ongewijzigd, leest nog steeds kb intern)
             _player.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
             if (_isMultiplayer)
                 _player2.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
@@ -271,7 +295,7 @@ namespace ForestQuest.State
                 enemy.Update(gameTime, target, _backgroundTiles);
             }
 
-            // Player <-> enemy blocking (keeps your new collision behavior)
+            // Player <-> enemy blocking
             for (int iter = 0; iter < 2; iter++)
             {
                 foreach (var enemy in _enemies)
@@ -352,7 +376,7 @@ namespace ForestQuest.State
             _prevAttackActiveP1 = _player.IsAttackActive;
             if (_isMultiplayer) _prevAttackActiveP2 = _player2.IsAttackActive;
 
-            // Enemy damage to players (now works even when bodies don't overlap)
+            // Enemy -> players damage
             Rectangle p1Rect2 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
             foreach (var enemy in _enemies)
                 if (enemy.TryDealDamage(p1Rect2, out int dmg1))
@@ -366,7 +390,7 @@ namespace ForestQuest.State
                         _player2.ApplyDamage(dmg2);
             }
 
-            // Coins
+            // Coins (gebruik de command-flag, met fallback naar kb)
             _coinManager.Update(gameTime);
             for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
             {
@@ -374,7 +398,8 @@ namespace ForestQuest.State
 
                 bool picked = false;
                 Rectangle rect1 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
-                if (coin.BoundingBox.Intersects(rect1) && kb.IsKeyDown(_player.Controls.Interact))
+                if (coin.BoundingBox.Intersects(rect1) &&
+                    (_p1InteractPressed || Keyboard.GetState().IsKeyDown(_player.Controls.Interact)))
                 {
                     picked = true;
                 }
@@ -382,7 +407,8 @@ namespace ForestQuest.State
                 if (_isMultiplayer && !picked)
                 {
                     Rectangle rect2 = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
-                    if (coin.BoundingBox.Intersects(rect2) && kb.IsKeyDown(_player2.Controls.Interact))
+                    if (coin.BoundingBox.Intersects(rect2) &&
+                        (_p2InteractPressed || Keyboard.GetState().IsKeyDown(_player2.Controls.Interact)))
                     {
                         picked = true;
                     }
@@ -398,7 +424,7 @@ namespace ForestQuest.State
                 }
             }
 
-            // Footsteps for either player moving
+            // Footsteps
             if (!_gameOverTriggered && !_victoryTriggered && !_player.IsDead && (!_isMultiplayer || !_player2.IsDead))
             {
                 const float footstepInterval = 0.3f;
