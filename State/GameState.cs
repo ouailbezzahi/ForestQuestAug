@@ -11,8 +11,9 @@ using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
 using System;
-using ForestQuest.World.Camera; // + toegevoegd
-using ForestQuest.Entities.Enemies.Factory; // + factory
+using ForestQuest.World.Camera;
+using ForestQuest.Entities.Enemies.Factory;
+using ForestQuest.Items.Coin.Factory;
 
 namespace ForestQuest.State
 {
@@ -90,6 +91,9 @@ namespace ForestQuest.State
         // Enemy factory (nieuw)
         private readonly IEnemyFactory _enemyFactory;
 
+        // Coin factory (nieuw)
+        private readonly ICoinFactory _coinFactory;
+
         private int[,] _backgroundTiles = new int[,]
         {
             { 3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,5 },
@@ -131,8 +135,9 @@ namespace ForestQuest.State
             _isMultiplayer = isMultiplayer;
             _level = level;
 
-            // init factory
+            // init factories
             _enemyFactory = new EnemyFactory();
+            _coinFactory = new CoinFactory();
         }
 
         public override void LoadContent()
@@ -193,7 +198,9 @@ namespace ForestQuest.State
                 3 => 12,
                 _ => 10
             };
-            _coinManager = new CoinManager(_content, mapWidth / tileSize, mapHeight / tileSize, coinSpawn);
+
+            // Coins via factory (zelfde gedrag/spawn als voorheen)
+            _coinManager = _coinFactory.Create(_content, mapWidth / tileSize, mapHeight / tileSize, coinSpawn);
             _coinCounter = new CoinCounter(_content);
             _totalCoins = _coinManager.Coins.Count;
 
