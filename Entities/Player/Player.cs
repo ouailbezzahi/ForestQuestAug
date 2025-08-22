@@ -1,10 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Audio;
 using System;
-using System.Collections.Generic;
 
 namespace ForestQuest.Entities.Player
 {
@@ -13,6 +12,11 @@ namespace ForestQuest.Entities.Player
         private Vector2 _feetPos;
         private float _baseSpeed = 3f;
         private float _speed;
+        // Acceleration: start slower and ramp to _baseSpeed
+        private float _minSpeedFactor = 0.25f;   // 25% of base when starting to move
+        private float _accelDuration = 0.35f;    // seconds to reach full speed
+        private float _accelTimer = 0f;
+
         private readonly float _scale = 0.8f;
 
         private PlayerState _state = PlayerState.Idle;
@@ -36,7 +40,7 @@ namespace ForestQuest.Entities.Player
         private SoundEffect _sfxDeath;
 
         private class AnimFrame { public Rectangle Src; public Vector2 Pivot; }
-        private class Animation { public List<AnimFrame> Frames = new(); public double FrameTime; public bool Loop; }
+        private class Animation { public System.Collections.Generic.List<AnimFrame> Frames = new(); public double FrameTime; public bool Loop; }
 
         private Animation _animIdle;
         private Animation _animRun;
@@ -270,6 +274,23 @@ namespace ForestQuest.Entities.Player
             if (kb.IsKeyDown(_controls.Attack))
                 StartAttack();
 
+            // Acceleration update happens BEFORE using _speed to build delta
+            bool hasMoveInput = !_stateLocked &&
+                (kb.IsKeyDown(_controls.Up) || kb.IsKeyDown(_controls.Down) ||
+                 kb.IsKeyDown(_controls.Left) || kb.IsKeyDown(_controls.Right));
+
+            if (hasMoveInput)
+            {
+                _accelTimer = Math.Min(_accelTimer + (float)dt, _accelDuration);
+            }
+            else
+            {
+                _accelTimer = 0f;
+            }
+            float t = _accelDuration <= 0f ? 1f : Math.Clamp(_accelTimer / _accelDuration, 0f, 1f);
+            float minSpeed = _baseSpeed * _minSpeedFactor;
+            _speed = MathHelper.SmoothStep(minSpeed, _baseSpeed, t);
+
             Vector2 delta = Vector2.Zero;
             if (!_stateLocked)
             {
@@ -421,6 +442,7 @@ namespace ForestQuest.Entities.Player
                 Transform = Matrix.CreateTranslation(-cam.X, -cam.Y, 0);
             }
         }
+
         public void ResolveCollisionWith(Rectangle obstacle, int[,] tiles)
         {
             // Current player collision rectangle
