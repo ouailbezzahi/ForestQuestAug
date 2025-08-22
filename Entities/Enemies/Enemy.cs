@@ -163,9 +163,8 @@ namespace ForestQuest.Entities.Enemies
                 opaquePerColumn[x] = count;
             }
 
-            // Een kolom is "leeg" als er vrijwel geen opaque pixels zijn.
-            const int EMPTY_THRESHOLD = 1;      // <= 1 opaque pixel => scheiding
-            const int MIN_SEG_WIDTH = 8;        // voorkom extreem smalle noise frames
+            const int EMPTY_THRESHOLD = 1;
+            const int MIN_SEG_WIDTH = 8;
             List<(int start, int end)> segments = new();
 
             bool inside = false;
@@ -194,21 +193,18 @@ namespace ForestQuest.Entities.Enemies
                     segments.Add((segStart, segEnd));
             }
 
-            // Fallback indien geen bruikbare segmenten
             if (segments.Count == 0)
             {
                 Debug.WriteLine("[WolfAnim] Geen segmenten gevonden -> uniform fallback.");
                 return UniformFallback(tex, expectedFrames, frameTime, loop);
             }
 
-            // Als we méér of minder segmenten hebben dan verwacht -> fallback (uniform + trim)
             if (segments.Count != expectedFrames)
             {
                 Debug.WriteLine($"[WolfAnim] Segment mismatch: found {segments.Count}, expected {expectedFrames} -> uniform fallback.");
                 return UniformFallback(tex, expectedFrames, frameTime, loop);
             }
 
-            // Trim per segment
             int baseline = 0;
             var temp = new List<AnimFrame>();
 
@@ -251,7 +247,6 @@ namespace ForestQuest.Entities.Enemies
                 if (frame.Pivot.Y > baseline) baseline = (int)frame.Pivot.Y;
             }
 
-            // Baseline normaliseren
             foreach (var f in temp)
                 f.Pivot = new Vector2(f.Pivot.X, baseline);
 
@@ -282,7 +277,6 @@ namespace ForestQuest.Entities.Enemies
 
                 Rectangle full = new(x0, 0, width, h);
 
-                // Fine trim binnen slice
                 int minX = full.Right, maxX = full.Left - 1, minY = h - 1, maxY = 0;
                 bool any = false;
                 for (int y = 0; y < h; y++)
@@ -341,7 +335,7 @@ namespace ForestQuest.Entities.Enemies
                 int w = Math.Min(rawFrameWidth, tex.Width - x0);
                 Rectangle full = new(x0, 0, w, rawFrameHeight);
 
-                int minX = full.Right, maxX = full.Left - 1, minY = full.Bottom - 1, maxY = full.Top;
+                int minX = full.Right, maxX = full.Left - 1, minY = full.Bottom - 1, maxY = 0;
                 bool any = false;
                 for (int y = 0; y < full.Height; y++)
                 {
@@ -442,6 +436,7 @@ namespace ForestQuest.Entities.Enemies
                 return;
             }
 
+            // Note: caller should pass player's CENTER for accurate distances
             Vector2 playerCenter = playerTopLeft;
             Vector2 myCenter = new(_feetPos.X, _feetPos.Y - _collisionHeight * 0.5f);
             float dist = Vector2.Distance(myCenter, playerCenter);
@@ -571,6 +566,24 @@ namespace ForestQuest.Entities.Enemies
             }
         }
 
+        // New: attack hitbox with reach so enemies can hit without overlapping bodies
+        public Rectangle GetAttackHitbox()
+        {
+            var box = BoundingBox;
+
+            // Reach scales with enemy size; ensure a sensible minimum
+            int reach = Math.Max(12, (int)(_collisionWidth * 0.35f));
+
+            // Use a central vertical slice of the enemy to avoid hitting too high/low
+            int hitHeight = (int)(_collisionHeight * 0.6f);
+            int top = box.Top + (box.Height - hitHeight) / 2;
+
+            if (_facing == Facing.Right)
+                return new Rectangle(box.Right, top, reach, hitHeight);
+            else
+                return new Rectangle(box.Left - reach, top, reach, hitHeight);
+        }
+
         public bool TryDealDamage(Rectangle playerRect, out int damage)
         {
             damage = 0;
@@ -579,7 +592,9 @@ namespace ForestQuest.Entities.Enemies
             if (_hitCooldownTimer > 0) return false;
             if (_currentAnim == null) return false;
             if (_currentFrameIndex != _attackImpactFrame) return false;
-            if (!BoundingBox.Intersects(playerRect)) return false;
+
+            // Use extended attack hitbox instead of body overlap
+            if (!GetAttackHitbox().Intersects(playerRect)) return false;
 
             damage = Type switch
             {

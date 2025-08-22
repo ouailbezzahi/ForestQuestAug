@@ -421,5 +421,36 @@ namespace ForestQuest.Entities.Player
                 Transform = Matrix.CreateTranslation(-cam.X, -cam.Y, 0);
             }
         }
+        public void ResolveCollisionWith(Rectangle obstacle, int[,] tiles)
+        {
+            // Current player collision rectangle
+            Rectangle me = FeetCollisionRect(_feetPos);
+            Rectangle inter = Rectangle.Intersect(me, obstacle);
+            if (inter.Width <= 0 || inter.Height <= 0)
+                return;
+
+            // Move out along the smallest overlap axis
+            Vector2 adjust = Vector2.Zero;
+            if (inter.Width < inter.Height)
+            {
+                // Resolve horizontally
+                int myCenterX = me.Center.X;
+                int obCenterX = obstacle.Center.X;
+                adjust.X = (myCenterX < obCenterX) ? -inter.Width : inter.Width;
+            }
+            else
+            {
+                // Resolve vertically
+                int myCenterY = me.Center.Y;
+                int obCenterY = obstacle.Center.Y;
+                adjust.Y = (myCenterY < obCenterY) ? -inter.Height : inter.Height;
+            }
+
+            Vector2 newFeet = new(_feetPos.X + adjust.X, _feetPos.Y + adjust.Y);
+
+            // Validate against tiles and map bounds
+            CollideFeet(ref newFeet, tiles);
+            _feetPos = newFeet;
+        }
     }
 }

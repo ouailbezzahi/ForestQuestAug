@@ -100,12 +100,11 @@ namespace ForestQuest.State
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
             { 7,2,2,1,1,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
@@ -311,22 +310,43 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Update players (camera follow in Player uses full viewport; Draw will compute per-viewport cameras)
+            // Update players
             _player.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
             if (_isMultiplayer)
                 _player2.Update(kb, gameTime, _graphicsDevice.Viewport, _backgroundTiles);
 
-            // Enemies chase the nearest player
+            // Enemies chase the nearest player (use CENTER for accurate ranges)
             foreach (var enemy in _enemies)
             {
-                Vector2 target = _player.Position;
+                Vector2 target = _player.Center;
                 if (_isMultiplayer)
                 {
                     float d1 = Vector2.Distance(enemy.Position, _player.Center);
                     float d2 = Vector2.Distance(enemy.Position, _player2.Center);
-                    target = d1 <= d2 ? _player.Position : _player2.Position;
+                    target = d1 <= d2 ? _player.Center : _player2.Center;
                 }
                 enemy.Update(gameTime, target, _backgroundTiles);
+            }
+
+            // Player <-> enemy blocking (keeps your new collision behavior)
+            for (int iter = 0; iter < 2; iter++)
+            {
+                foreach (var enemy in _enemies)
+                {
+                    if (enemy.IsDead) continue;
+                    Rectangle eRect = enemy.BoundingBox;
+
+                    Rectangle p1Rect = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+                    if (p1Rect.Intersects(eRect))
+                        _player.ResolveCollisionWith(eRect, _backgroundTiles);
+
+                    if (_isMultiplayer)
+                    {
+                        Rectangle p2Rect = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
+                        if (p2Rect.Intersects(eRect))
+                            _player2.ResolveCollisionWith(eRect, _backgroundTiles);
+                    }
+                }
             }
 
             // Reset per-player hit sets when their attacks finish
@@ -389,21 +409,21 @@ namespace ForestQuest.State
             _prevAttackActiveP1 = _player.IsAttackActive;
             if (_isMultiplayer) _prevAttackActiveP2 = _player2.IsAttackActive;
 
-            // Enemy damage to players
-            Rectangle p1Rect = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
+            // Enemy damage to players (now works even when bodies don't overlap)
+            Rectangle p1Rect2 = new((int)_player.Position.X, (int)_player.Position.Y, _player.FrameWidth, _player.FrameHeight);
             foreach (var enemy in _enemies)
-                if (enemy.TryDealDamage(p1Rect, out int dmg1))
+                if (enemy.TryDealDamage(p1Rect2, out int dmg1))
                     _player.ApplyDamage(dmg1);
 
             if (_isMultiplayer)
             {
-                Rectangle p2Rect = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
+                Rectangle p2Rect2 = new((int)_player2.Position.X, (int)_player2.Position.Y, _player2.FrameWidth, _player2.FrameHeight);
                 foreach (var enemy in _enemies)
-                    if (enemy.TryDealDamage(p2Rect, out int dmg2))
+                    if (enemy.TryDealDamage(p2Rect2, out int dmg2))
                         _player2.ApplyDamage(dmg2);
             }
 
-            // Coins: both players can pick up using their own Interact key
+            // Coins
             _coinManager.Update(gameTime);
             for (int i = _coinManager.Coins.Count - 1; i >= 0; i--)
             {
@@ -484,7 +504,7 @@ namespace ForestQuest.State
                 return;
             }
 
-            // Game over: single player -> when P1 dies; multiplayer -> when both die
+            // Game over
             bool gameOver = !_isMultiplayer ? _player.IsDead : (_player.IsDead && _player2.IsDead);
             if (!_gameOverTriggered && gameOver && !_victoryTriggered)
             {
@@ -662,16 +682,15 @@ namespace ForestQuest.State
             if (_dialogBox is { IsVisible: true }) _dialogBox.Draw(spriteBatch, _graphicsDevice);
             spriteBatch.End();
 
-            // Health bars stacked top-right: Player 1 then Player 2
+            // Health bars stacked top-right
             var full = _graphicsDevice.Viewport;
             int margin = 16;
-            int panelWidth = 260;   // UI panel width for a bar
-            int blockHeight = 60;   // enough for "Player X" + bar
-            int p2ExtraOffset = 48; // extra spacing between P1 and P2 (increase to move P2 lower)
+            int panelWidth = 260;
+            int blockHeight = 60;
+            int p2ExtraOffset = 48;
 
             var prevVp = _graphicsDevice.Viewport;
 
-            // Player 1 (top-right)
             var vpP1 = new Viewport(
                 full.X + full.Width - panelWidth - margin,
                 full.Y + margin,
@@ -686,7 +705,6 @@ namespace ForestQuest.State
 
             if (_isMultiplayer && _healthBar2 != null)
             {
-                // Player 2 (under Player 1 with extra spacing, clamped to screen)
                 int p2Y = vpP1.Y + blockHeight + p2ExtraOffset;
                 p2Y = Math.Min(full.Y + full.Height - blockHeight - margin, p2Y);
 
