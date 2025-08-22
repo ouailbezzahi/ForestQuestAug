@@ -77,7 +77,7 @@ In ForestQuest, you encounter a unique enemy in each level. Below you can see wh
 
 ### Level 3: Final Boss - Shadow Wolf
 
-![Shadow Wolf Boss](Public/wolf.PNG)
+![Shadow Wolf Boss](Public/wolf.png)
 
 - **Description:**  
   The ultimate challenge. Shadow Wolf is fast, powerful, and has multiple attack patterns.
