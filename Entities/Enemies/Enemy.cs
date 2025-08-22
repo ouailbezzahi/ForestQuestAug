@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using ForestQuest.Entities.Enemies.Behavior;
 
 namespace ForestQuest.Entities.Enemies
 {
@@ -79,6 +80,8 @@ namespace ForestQuest.Entities.Enemies
         private const int WOLF_ATTACK_FRAMES = 7;
         private const int WOLF_DEATH_FRAMES  = 8;
 
+        private IEnemyBehavior _behavior;
+
         public Enemy(Vector2 startTopLeft, EnemyType type = EnemyType.Cat, int levelVariant = 1)
         {
             _collisionWidth = 1;
@@ -86,6 +89,7 @@ namespace ForestQuest.Entities.Enemies
             _feetPos = new Vector2(startTopLeft.X + _collisionWidth * 0.5f, startTopLeft.Y + _collisionHeight);
             LevelVariant = Math.Clamp(levelVariant, 1, 3);
             Type = type;
+            _behavior = EnemyBehaviorProvider.Get(Type);
             _scale = type == EnemyType.Wolf ? 1.5f : 0.5f;
             _health = _maxHealth = type switch
             {
@@ -427,6 +431,13 @@ namespace ForestQuest.Entities.Enemies
 
         public void Update(GameTime gameTime, Vector2 playerTopLeft, int[,] tiles)
         {
+
+            // Behavior parameters (Strategy) — identical to old defaults
+            _speed = _behavior.Speed;
+            _followDistance = _behavior.FollowDistance;
+            _stopFollowDistance = _behavior.StopFollowDistance;
+            _attackRange = _behavior.AttackRange;
+
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
             if (_hitCooldownTimer > 0) _hitCooldownTimer -= dt;
 
