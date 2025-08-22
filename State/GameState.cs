@@ -11,9 +11,10 @@ using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
 using System;
-using ForestQuest.World.Camera;
-using ForestQuest.Entities.Enemies.Factory;
-using ForestQuest.Items.Coin.Factory;
+using ForestQuest.World.Camera; // + toegevoegd
+using ForestQuest.Entities.Enemies.Factory; // + factory
+using ForestQuest.Items.Coin.Factory; // + coin factory
+using ForestQuest.World.Levels; // + level factory
 
 namespace ForestQuest.State
 {
@@ -94,40 +95,10 @@ namespace ForestQuest.State
         // Coin factory (nieuw)
         private readonly ICoinFactory _coinFactory;
 
-        private int[,] _backgroundTiles = new int[,]
-        {
-            { 3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,5 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
-            { 7,2,2,1,1,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
-            { 4,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,6 },
-        };
+        // Level factory (nieuw)
+        private readonly ILevelFactory _levelFactory;
+        private LevelData _levelData;
+        private int[,] _backgroundTiles;
 
         public GameState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice, bool isMultiplayer, int level = 3)
             : base(game, content, graphicsDevice)
@@ -138,10 +109,15 @@ namespace ForestQuest.State
             // init factories
             _enemyFactory = new EnemyFactory();
             _coinFactory = new CoinFactory();
+            _levelFactory = new LevelFactory();
         }
 
         public override void LoadContent()
         {
+            // Level data ophalen (tegels, startposities, coin-spawn)
+            _levelData = _levelFactory.Create(_level);
+            _backgroundTiles = _levelData.Tiles;
+
             _houseTile = _content.Load<Texture2D>("Background/House/Slice 10");
             _treeTile = _content.Load<Texture2D>("Background/Tree/Slice 12");
             _grassTile = _content.Load<Texture2D>("Background/Grass/Slice 21");
@@ -163,13 +139,13 @@ namespace ForestQuest.State
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(_backgroundMusic);
 
-            _player = new Player(new Vector2(15 * 32, 15 * 32), PlayerControls.Default1, _level);
+            // Startposities uit leveldata (identiek aan voorheen)
+            _player = new Player(_levelData.Player1Start, PlayerControls.Default1, _level);
             _player.LoadContent(_content);
 
             if (_isMultiplayer)
             {
-                // Spawn P2 slightly to the right
-                _player2 = new Player(new Vector2(17 * 32, 15 * 32), PlayerControls.Default2, _level);
+                _player2 = new Player(_levelData.Player2Start, PlayerControls.Default2, _level);
                 _player2.LoadContent(_content);
             }
 
@@ -191,15 +167,8 @@ namespace ForestQuest.State
             int mapWidth = _backgroundTiles.GetLength(1) * tileSize;
             int mapHeight = _backgroundTiles.GetLength(0) * tileSize;
 
-            int coinSpawn = _level switch
-            {
-                1 => 10,
-                2 => 15,
-                3 => 12,
-                _ => 10
-            };
-
-            // Coins via factory (zelfde gedrag/spawn als voorheen)
+            // Zelfde coins-spawn logica, maar via leveldata
+            int coinSpawn = _levelData.CoinSpawnCount;
             _coinManager = _coinFactory.Create(_content, mapWidth / tileSize, mapHeight / tileSize, coinSpawn);
             _coinCounter = new CoinCounter(_content);
             _totalCoins = _coinManager.Coins.Count;
