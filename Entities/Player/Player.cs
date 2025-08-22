@@ -71,14 +71,19 @@ namespace ForestQuest.Entities.Player
         private readonly Camera _camera = new();
 
         public Vector2 Position => new(_feetPos.X - _collisionWidth * 0.5f, _feetPos.Y - _collisionHeight);
+        public Vector2 Center => new(_feetPos.X, _feetPos.Y - _collisionHeight * 0.5f);
         public Matrix CameraTransform => _camera.Transform;
         public int FrameWidth => _collisionWidth;
         public int FrameHeight => _collisionHeight;
 
         public event Action<int, int>? OnHealthChanged;
 
-        public Player(Vector2 startTopLeft, int levelVariant = 1)
+        private readonly PlayerControls _controls;
+        public PlayerControls Controls => _controls;
+
+        public Player(Vector2 startTopLeft, PlayerControls controls, int levelVariant = 1)
         {
+            _controls = controls ?? PlayerControls.Default1;
             _collisionWidth = 1;
             _collisionHeight = 1;
             _feetPos = new Vector2(startTopLeft.X + _collisionWidth * 0.5f, startTopLeft.Y + _collisionHeight);
@@ -262,16 +267,16 @@ namespace ForestQuest.Entities.Player
                 return;
             }
 
-            if (kb.IsKeyDown(Keys.Space))
+            if (kb.IsKeyDown(_controls.Attack))
                 StartAttack();
 
             Vector2 delta = Vector2.Zero;
             if (!_stateLocked)
             {
-                if (kb.IsKeyDown(Keys.Z)) delta.Y -= _speed;
-                if (kb.IsKeyDown(Keys.S)) delta.Y += _speed;
-                if (kb.IsKeyDown(Keys.Q)) { delta.X -= _speed; _facing = Facing.Left; }
-                if (kb.IsKeyDown(Keys.D)) { delta.X += _speed; _facing = Facing.Right; }
+                if (kb.IsKeyDown(_controls.Up)) delta.Y -= _speed;
+                if (kb.IsKeyDown(_controls.Down)) delta.Y += _speed;
+                if (kb.IsKeyDown(_controls.Left)) { delta.X -= _speed; _facing = Facing.Left; }
+                if (kb.IsKeyDown(_controls.Right)) { delta.X += _speed; _facing = Facing.Right; }
             }
 
             if (!_stateLocked)
