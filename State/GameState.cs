@@ -203,7 +203,7 @@ namespace ForestQuest.State
             _totalCoins = _coinManager.Coins.Count;
 
             _dialogBox = _level == 1
-                ? new DialogBox(_content, "Welkom in Forest Quest! ... (Level 1)")
+                ? new DialogBox(_content, ForestQuest.UI.IntroText.Build(_isMultiplayer))
                 : null;
 
             _enemies = _enemyFactory.CreateForLevel(_content, _level);
