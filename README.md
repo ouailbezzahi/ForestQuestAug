@@ -1,113 +1,137 @@
-# ForestQuest# ForestQuest
+# ForestQuest
 
-## Spelconcept & Verhaal
+## Game Concept & Story
 
-**ForestQuest** is een avontuurlijk 2D-platformspel waarin je als held het mysterieuze bos betreedt om een eeuwenoude vloek te breken. Je reist door drie unieke levels, verzamelt munten en neemt het op tegen verschillende vijanden. Je uiteindelijke doel is het verslaan van de Shadow Wolf, de eindbaas van het bos.
+**ForestQuest** is an adventurous 2D platformer where you play as a hero entering a mysterious forest to break an ancient curse. You travel through three unique levels, collect coins, and face different enemies. Your ultimate goal is to defeat the Shadow Wolf, the final boss of the forest.
 
-### Verhaal
+### Story
 
-Het ForestQuest-bos is vervloekt door de duistere Shadow Wolf. Monsters dwalen rond en het bos is onveilig. Jij, als speler, bent een jonge avonturier die het bos wil redden. Door levels te voltooien, vijanden te verslaan en alle munten te verzamelen, kom je steeds dichter bij het ontrafelen van het mysterie en het verslaan van de Shadow Wolf.
-
----
-
-## Jouw Hero
-
-Je speelt als een **jonge avonturier** met een rode outfit en een bijl.  
-Hieronder zie je hoe jouw held eruit ziet:
-
-![Hero Sprite](Public\hero.PNG)
-
-- **Uiterlijk:**
-  - Rode shirt
-  - Bruine broek
-  - Bijl als wapen
-  - Verschillende animaties voor lopen, springen, aanvallen en sterven
-
-In multiplayer speel je samen met een tweede speler, die dezelfde sprite gebruikt.
+The ForestQuest forest is cursed by the dark Shadow Wolf. Monsters roam freely and the forest is unsafe. You, as the player, are a young adventurer determined to save the forest. By completing levels, defeating enemies, and collecting all coins, you get closer to unraveling the mystery and defeating the Shadow Wolf.
 
 ---
 
-## Vijanden
+## Lina (Dialogbox Character)
 
-In ForestQuest kom je in elk level een unieke vijand tegen. Hieronder zie je hoe ze eruit zien:
+At the start of the game, you meet **Lina**, a friendly character who appears in a dialogbox to give you instructions and tips about the game. Lina helps you understand the controls, objectives, and how to defeat enemies. Look for her dialogbox at the beginning of your adventure!
+
+![Lina Portrait](Public/LinaPortrait.png)
+
+- **Description:**
+  - Helpful and friendly guide
+  - Appears in a dialogbox with useful information
+  - Gives advice at the start of the game
+
+---
+
+## Coin
+
+In every level, you can collect coins to progress and unlock new areas. Coins are required to complete each level.
+
+![Coin](Public/coin.png)
+
+- **Description:**
+  - Shiny golden coin with a clear, round shape
+  - Animates when picked up
+  - Essential for level completion
+
+---
+
+## Your Hero
+
+You play as a **young adventurer** with a red outfit and an axe.  
+Below you can see what your hero looks like:
+
+![Hero Sprite](Public/hero.PNG)
+
+- **Appearance:**
+  - Red shirt
+  - Brown pants
+  - Axe as weapon
+  - Various animations for walking, jumping, attacking, and dying
+
+In multiplayer, you play together with a second player, who uses the same sprite.
+
+---
+
+## Enemies
+
+In ForestQuest, you encounter a unique enemy in each level. Below you can see what they look like:
 
 ### Level 1: Cat Enemy
 
-![Cat Enemy](Public\cat.PNG)
+![Cat Enemy](Public/cat.PNG)
 
-- **Beschrijving:**  
-  Sluwe kat die snel beweegt en onverwacht aanvalt.
+- **Description:**  
+  Sly cat that moves quickly and attacks unexpectedly.
 
 ---
 
 ### Level 2: Dog Enemy
 
-![Dog Enemy](Public\dog.PNG)
+![Dog Enemy](Public/dog.PNG)
 
-- **Beschrijving:**  
-  Sterke hond die zijn territorium verdedigt en agressief is.
+- **Description:**  
+  Strong dog that defends its territory and is aggressive.
 
 ---
 
 ### Level 3: Final Boss - Shadow Wolf
 
-![Shadow Wolf Boss](Public\wolf.PNG)
+![Shadow Wolf Boss](Public/wolf.PNG)
 
-- **Beschrijving:**  
-  De ultieme uitdaging. Shadow Wolf is snel, krachtig en heeft meerdere aanvalspatronen.
+- **Description:**  
+  The ultimate challenge. Shadow Wolf is fast, powerful, and has multiple attack patterns.
 
 ---
 
-## Levels & Doelen
+## Levels & Objectives
 
 - **Level 1:**
-  - Vijand: Cat
-  - Verzamel 10 munten
+  - Enemy: Cat
+  - Collect 10 coins
 - **Level 2:**
-  - Vijand: Dog
-  - Verzamel 15 munten
+  - Enemy: Dog
+  - Collect 15 coins
 - **Level 3:**
-  - Vijand: Shadow Wolf (Final Boss)
-  - Verzamel 12 munten
+  - Enemy: Shadow Wolf (Final Boss)
+  - Collect 12 coins
 
 ---
 
-## Besturing
+## Controls
 
 **Player 1:**
 
-- **Z / Q / S / D** – Bewegen
-- **Spatiebalk** – Aanvallen
-- **E** – Interactie
+- **Z / Q / S / D** – Move
+- **Spacebar** – Attack
+- **E** – Interact
 
 **Player 2:**
 
-- **Pijltjestoetsen** – Bewegen
-- **K** – Aanvallen
-- **L** – Interactie
+- **Arrow keys** – Move
+- **K** – Attack
+- **L** – Interact
 
-**Beide spelers:**
+**Both players:**
 
-- **Escape / P** – Pauze menu openen/sluiten
+- **Escape / P** – Open/close pause menu
 
 ---
 
 ## Features
 
-- Singleplayer en lokale multiplayer
-- Drie unieke levels met verschillende vijanden en doelen
-- Munten verzamelen en vijanden verslaan
-- Boss battle tegen Shadow Wolf
-- Pauze- en optiesmenu
-- Dynamische camera (split-screen bij multiplayer)
-- Sfeervolle muziek en geluidseffecten
+- Singleplayer and local multiplayer
+- Three unique levels with different enemies and objectives
+- Collect coins and defeat enemies
+- Boss battle against Shadow Wolf
+- Pause and options menu
+- Dynamic camera (split-screen in multiplayer)
+- Atmospheric music and sound effects
 
 ---
 
-## Doel
+## Goal
 
-Verzamel alle munten, versla de vijanden in elk level en bevrijd het bos van de vloek van de Shadow Wolf!
+Collect all coins, defeat the enemies in each level, and free the forest from the curse of the Shadow Wolf!
 
 ---
-
-Veel plezier
