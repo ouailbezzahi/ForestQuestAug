@@ -18,6 +18,12 @@ namespace ForestQuest.State
         private State _nextState;
         private Texture2D _logo;
 
+        private MouseState _prevMouse;
+
+        // Keyboard navigation
+        private int _selectedIndex = 0;
+        private KeyboardState _prevKeyboard;
+
         public MenuState(Game1 game, ContentManager content, GraphicsDevice graphicsDevice)
             : base(game, content, graphicsDevice)
         {
@@ -65,32 +71,99 @@ namespace ForestQuest.State
             }
         }
 
+        // Build hit-test rectangles that match the drawn buttons (with padding)
+        private void RebuildButtonBoundsForHitTest()
+        {
+            int screenWidth = _graphicsDevice.Viewport.Width;
+            int screenHeight = _graphicsDevice.Viewport.Height;
+            float spacing = 40f;
+
+            int logoWidth = screenWidth / 4;
+            int logoHeight = _logo != null ? (int)((float)_logo.Height / _logo.Width * logoWidth) : 0;
+            int logoY = screenHeight / 12;
+            int buttonsStartY = logoY + logoHeight + (int)spacing;
+            int currentY = buttonsStartY;
+
+            for (int i = 0; i < _menuOptions.Length; i++)
+            {
+                Vector2 textSize = _font.MeasureString(_menuOptions[i]);
+                int paddingX = 30;
+                int paddingY = 10;
+                int buttonWidth = (int)textSize.X + paddingX;
+                int buttonHeight = (int)textSize.Y + paddingY;
+                int buttonX = (screenWidth - buttonWidth) / 2;
+                int buttonY = currentY;
+                _menuBounds[i] = new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
+
+                currentY += buttonHeight + (int)spacing;
+            }
+        }
+
         public override void Update(GameTime gameTime)
         {
             _background.Update(gameTime);
-            MouseState mouseState = Mouse.GetState();
-            if (mouseState.LeftButton == ButtonState.Pressed)
-            {
-                Point mousePosition = mouseState.Position;
 
-                for (int i = 0; i < _menuOptions.Length; i++)
+            // Keep hit-test bounds in sync with what Draw renders
+            RebuildButtonBoundsForHitTest();
+
+            // Keyboard navigation (Up/Down to select, Enter to confirm)
+            var kb = Keyboard.GetState();
+            bool pressed(Keys k) => kb.IsKeyDown(k) && !_prevKeyboard.IsKeyDown(k);
+
+            if (pressed(Keys.Up))
+                _selectedIndex = (_selectedIndex - 1 + _menuOptions.Length) % _menuOptions.Length;
+
+            if (pressed(Keys.Down))
+                _selectedIndex = (_selectedIndex + 1) % _menuOptions.Length;
+
+            if (pressed(Keys.Enter))
+            {
+                ExecuteMenuOption(_selectedIndex);
+                _prevKeyboard = kb; // ensure no double-trigger
+                return;
+            }
+
+            // Mouse handling
+            MouseState mouse = Mouse.GetState();
+            bool clickReleased = _prevMouse.LeftButton == ButtonState.Pressed && mouse.LeftButton == ButtonState.Released;
+
+            // Hover updates selection for consistency with keyboard
+            Point pos = mouse.Position;
+            for (int i = 0; i < _menuOptions.Length; i++)
+            {
+                if (_menuBounds[i].Contains(pos))
                 {
-                    if (_menuBounds[i].Contains(mousePosition))
+                    _selectedIndex = i;
+                    if (clickReleased)
                     {
-                        switch (i)
-                        {
-                            case 0: // Single Player
-                                _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false));
-                                break;
-                            case 1: // Multiplayer
-                                _game.ChangeState(new GameState(_game, _content, _graphicsDevice, true));
-                                break;
-                            case 2: // Quit
-                                _game.Exit();
-                                break;
-                        }
+                        ExecuteMenuOption(i);
+                        _prevMouse = mouse;
+                        _prevKeyboard = kb;
+                        return;
                     }
+                    break;
                 }
+            }
+
+            _prevMouse = mouse;
+            _prevKeyboard = kb;
+        }
+
+        private void ExecuteMenuOption(int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    System.Diagnostics.Debug.WriteLine("[Menu] Start Single Player");
+                    _game.ChangeState(new GameState(_game, _content, _graphicsDevice, false, 1));
+                    break;
+                case 1:
+                    System.Diagnostics.Debug.WriteLine("[Menu] Start Multiplayer");
+                    _game.ChangeState(new GameState(_game, _content, _graphicsDevice, true, 1));
+                    break;
+                case 2:
+                    _game.Exit();
+                    break;
             }
         }
 
@@ -126,22 +199,9 @@ namespace ForestQuest.State
             MouseState mouse = Mouse.GetState();
             Point mousePos = mouse.Position;
             float spacing = 40f;
-            int totalButtonsHeight = 0;
-            int[] buttonHeights = new int[_menuOptions.Length];
-            int[] buttonYs = new int[_menuOptions.Length];
-            for (int i = 0; i < _menuOptions.Length; i++)
-            {
-                Vector2 textSize = _font.MeasureString(_menuOptions[i]);
-                int paddingX = 30;
-                int paddingY = 10;
-                int buttonHeight = (int)textSize.Y + paddingY;
-                buttonHeights[i] = buttonHeight;
-                totalButtonsHeight += buttonHeight;
-                if (i > 0) totalButtonsHeight += (int)spacing;
-            }
-            // Start direct na het logo met spacing
             int buttonsStartY = logoY + logoHeight + (int)spacing;
             int currentY = buttonsStartY;
+
             for (int i = 0; i < _menuOptions.Length; i++)
             {
                 Vector2 textSize = _font.MeasureString(_menuOptions[i]);
@@ -151,27 +211,46 @@ namespace ForestQuest.State
                 int buttonHeight = (int)textSize.Y + paddingY;
                 int buttonX = (screenWidth - buttonWidth) / 2;
                 int buttonY = currentY;
-                buttonYs[i] = buttonY;
                 Rectangle buttonRect = new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
 
-                Color buttonColor = new Color(60, 60, 60, 200); // normaal
-                if (buttonRect.Contains(mousePos))
-                {
-                    if (mouse.LeftButton == ButtonState.Pressed)
-                        buttonColor = new Color(30, 30, 30, 220); // klik
-                    else
-                        buttonColor = new Color(40, 40, 40, 210); // hover
-                }
+                // Update hit bounds to match Draw pass (safe if called multiple times)
+                _menuBounds[i] = buttonRect;
+
+                bool hovered = buttonRect.Contains(mousePos);
+                bool selected = (i == _selectedIndex);
+
+                Color buttonColor = new Color(60, 60, 60, 200);   // normaal
+                if (hovered && mouse.LeftButton == ButtonState.Pressed)
+                    buttonColor = new Color(30, 30, 30, 220);    // klik
+                else if (hovered)
+                    buttonColor = new Color(40, 40, 40, 210);    // hover
+                else if (selected)
+                    buttonColor = new Color(70, 70, 110, 210);   // keyboard-selected
 
                 Texture2D rectTex = new Texture2D(_graphicsDevice, 1, 1);
                 rectTex.SetData(new[] { Color.White });
                 spriteBatch.Draw(rectTex, buttonRect, buttonColor);
+
+                // Optional: draw a light outline when selected
+                if (selected)
+                {
+                    Color outline = new Color(180, 200, 255, 220);
+                    // top
+                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Y, buttonRect.Width, 2), outline);
+                    // bottom
+                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Bottom - 2, buttonRect.Width, 2), outline);
+                    // left
+                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.X, buttonRect.Y, 2, buttonRect.Height), outline);
+                    // right
+                    spriteBatch.Draw(rectTex, new Rectangle(buttonRect.Right - 2, buttonRect.Y, 2, buttonRect.Height), outline);
+                }
 
                 Vector2 textPos = new Vector2(
                     buttonRect.X + (buttonRect.Width - textSize.X) / 2,
                     buttonRect.Y + (buttonRect.Height - textSize.Y) / 2
                 );
                 spriteBatch.DrawString(_font, _menuOptions[i], textPos, Color.White);
+
                 currentY += buttonHeight + (int)spacing;
             }
             spriteBatch.End();

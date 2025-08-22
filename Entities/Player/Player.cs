@@ -88,20 +88,20 @@ namespace ForestQuest.Entities.Player
 
         public void LoadContent(ContentManager content)
         {
-            _texIdle   = content.Load<Texture2D>($"Player/Level1/hero_level1_idle");
-            _texRun    = content.Load<Texture2D>($"Player/Level1/hero_level1_run");
+            _texIdle = content.Load<Texture2D>($"Player/Level1/hero_level1_idle");
+            _texRun = content.Load<Texture2D>($"Player/Level1/hero_level1_run");
             _texAttack = content.Load<Texture2D>($"Player/Level1/hero_level1_attack");
-            _texHurt   = content.Load<Texture2D>($"Player/Level1/hero_level1_hurt");
-            _texDeath  = content.Load<Texture2D>($"Player/Level1/hero_level1_death");
+            _texHurt = content.Load<Texture2D>($"Player/Level1/hero_level1_hurt");
+            _texDeath = content.Load<Texture2D>($"Player/Level1/hero_level1_death");
 
-            _sfxHurt  = SafeLoadSfx(content, "Audio/hero_hurt");
+            _sfxHurt = SafeLoadSfx(content, "Audio/hero_hurt");
             _sfxDeath = SafeLoadSfx(content, "Audio/hero_death");
 
-            _animIdle   = BuildAnimation(_texIdle,   4, 0.15, true);
-            _animRun    = BuildAnimation(_texRun,    6, 0.09, true);
+            _animIdle = BuildAnimation(_texIdle, 4, 0.15, true);
+            _animRun = BuildAnimation(_texRun, 6, 0.09, true);
             _animAttack = BuildAnimation(_texAttack, 4, 0.15, false);
-            _animHurt   = BuildAnimation(_texHurt,   2, 0.18, false);
-            _animDeath  = BuildAnimation(_texDeath,  4, 0.25, false);
+            _animHurt = BuildAnimation(_texHurt, 2, 0.18, false);
+            _animDeath = BuildAnimation(_texDeath, 4, 0.25, false);
 
             DeriveCollisionBoxFromIdle();
             SetState(PlayerState.Idle, force: true);
@@ -194,12 +194,12 @@ namespace ForestQuest.Entities.Player
 
             switch (_state)
             {
-                case PlayerState.Idle:   _currentAnim = _animIdle;   _stateLocked = false; break;
-                case PlayerState.Run:    _currentAnim = _animRun;    _stateLocked = false; break;
-                case PlayerState.Attack: _currentAnim = _animAttack; _stateLocked = true;  _attackLockTimer = _attackLockTime; break;
-                case PlayerState.Hurt:   _currentAnim = _animHurt;   _stateLocked = true;  _hurtLockTimer = _hurtLockDuration; break;
-                case PlayerState.Death:  _currentAnim = _animDeath;  _stateLocked = true;  break;
-                default:                 _currentAnim = _animIdle;   _stateLocked = false; break;
+                case PlayerState.Idle: _currentAnim = _animIdle; _stateLocked = false; break;
+                case PlayerState.Run: _currentAnim = _animRun; _stateLocked = false; break;
+                case PlayerState.Attack: _currentAnim = _animAttack; _stateLocked = true; _attackLockTimer = _attackLockTime; break;
+                case PlayerState.Hurt: _currentAnim = _animHurt; _stateLocked = true; _hurtLockTimer = _hurtLockDuration; break;
+                case PlayerState.Death: _currentAnim = _animDeath; _stateLocked = true; break;
+                default: _currentAnim = _animIdle; _stateLocked = false; break;
             }
         }
 

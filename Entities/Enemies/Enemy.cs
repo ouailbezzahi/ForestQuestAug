@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace ForestQuest.Entities.Enemies
 {
@@ -10,6 +11,7 @@ namespace ForestQuest.Entities.Enemies
     {
         private Vector2 _feetPos;
 
+        // Movement / detectie
         private float _speed = 1.2f;
         private bool _followingPlayer;
         private float _followDistance = 140f;
@@ -21,46 +23,47 @@ namespace ForestQuest.Entities.Enemies
         private double _idleDirTimer;
         private const double IdleDirSwitch = 2.0;
 
+        // State
         private EnemyState _state = EnemyState.Idle;
         private bool _isDead;
         private bool _stateLocked;
 
+        // Health
         private int _maxHealth = 60;
         private int _health;
 
+        // Textures
         private Texture2D _texIdle;
         private Texture2D _texRun;
         private Texture2D _texAttack;
         private Texture2D _texDeath;
 
+        // Anim
         private class AnimFrame { public Rectangle Src; public Vector2 Pivot; }
         private class Animation { public List<AnimFrame> Frames = new(); public double FrameTime; public bool Loop; }
-
-        private Animation _animIdle;
-        private Animation _animRun;
-        private Animation _animAttack;
-        private Animation _animDeath;
-        private Animation _currentAnim;
-
+        private Animation _animIdle, _animRun, _animAttack, _animDeath, _currentAnim;
         private int _currentFrameIndex;
         private double _animElapsed;
         private bool _animFinished;
 
+        // Collision
         private int _collisionWidth;
         private int _collisionHeight;
-        private float _scale; // NIET meer readonly -> afhankelijk van type
+        private float _scale;
 
+        // Attack
         private int _attackImpactFrame = 1;
         private float _hitCooldownTimer;
         private const float HitCooldownDuration = 2f;
 
+        // Meta
         public int LevelVariant { get; }
         public EnemyType Type { get; }
         public int Health => _health;
         public int MaxHealth => _maxHealth;
         public bool IsBoss => Type == EnemyType.Wolf;
 
-        public event Action<int,int>? OnHealthChanged;
+        public event Action<int, int>? OnHealthChanged;
         private void RaiseHealthChanged() => OnHealthChanged?.Invoke(_health, _maxHealth);
         private void ChangeHealth(int newValue)
         {
@@ -70,6 +73,12 @@ namespace ForestQuest.Entities.Enemies
             RaiseHealthChanged();
         }
 
+        // ---- CORRECTE WOLF FRAME COUNTS (idle 8, run 7, attack 7, death 8) ----
+        private const int WOLF_IDLE_FRAMES   = 8;
+        private const int WOLF_RUN_FRAMES    = 7;
+        private const int WOLF_ATTACK_FRAMES = 7;
+        private const int WOLF_DEATH_FRAMES  = 8;
+
         public Enemy(Vector2 startTopLeft, EnemyType type = EnemyType.Cat, int levelVariant = 1)
         {
             _collisionWidth = 1;
@@ -77,7 +86,7 @@ namespace ForestQuest.Entities.Enemies
             _feetPos = new Vector2(startTopLeft.X + _collisionWidth * 0.5f, startTopLeft.Y + _collisionHeight);
             LevelVariant = Math.Clamp(levelVariant, 1, 3);
             Type = type;
-            _scale = type == EnemyType.Wolf ? 1.5f : 0.5f; // SCALE PER TYPE
+            _scale = type == EnemyType.Wolf ? 1.5f : 0.5f;
             _health = _maxHealth = type switch
             {
                 EnemyType.Cat => 60,
@@ -103,10 +112,26 @@ namespace ForestQuest.Entities.Enemies
             _texAttack = content.Load<Texture2D>($"{levelDir}/{baseName}_attack");
             _texDeath  = content.Load<Texture2D>($"{levelDir}/{baseName}_death");
 
-            _animIdle   = BuildAnimation(_texIdle,   4, 0.18, true);
-            _animRun    = BuildAnimation(_texRun,    6, 0.10, true);
-            _animAttack = BuildAnimation(_texAttack, 4, 0.12, false);
-            _animDeath  = BuildAnimation(_texDeath,  4, 0.15, false);
+            if (Type == EnemyType.Wolf)
+            {
+                _animIdle   = BuildAnimationSmartWolf(_texIdle,   WOLF_IDLE_FRAMES,   0.14, true);
+                _animRun    = BuildAnimationSmartWolf(_texRun,    WOLF_RUN_FRAMES,    0.08, true);
+                _animAttack = BuildAnimationSmartWolf(_texAttack, WOLF_ATTACK_FRAMES, 0.10, false);
+                _animDeath  = BuildAnimationSmartWolf(_texDeath,  WOLF_DEATH_FRAMES,  0.12, false);
+            }
+            else
+            {
+                var (idle, run, attack, death) = Type switch
+                {
+                    EnemyType.Cat => (4, 6, 4, 4),
+                    EnemyType.Dog => (4, 6, 4, 4),
+                    _ => (4, 6, 4, 4)
+                };
+                _animIdle   = BuildAnimationFixedAndTrim(_texIdle,   idle,   0.18, true);
+                _animRun    = BuildAnimationFixedAndTrim(_texRun,    run,    0.10, true);
+                _animAttack = BuildAnimationFixedAndTrim(_texAttack, attack, 0.12, false);
+                _animDeath  = BuildAnimationFixedAndTrim(_texDeath,  death,  0.15, false);
+            }
 
             if (_animAttack.Frames.Count > 0)
                 _attackImpactFrame = _animAttack.Frames.Count / 2;
@@ -116,54 +141,240 @@ namespace ForestQuest.Entities.Enemies
             RaiseHealthChanged();
         }
 
-        private Animation BuildAnimation(Texture2D tex, int frameCount, double frameTime, bool loop)
+        // ---------- Wolf specifieke slicing ----------
+        private Animation BuildAnimationSmartWolf(Texture2D tex, int expectedFrames, double frameTime, bool loop)
         {
             var anim = new Animation { FrameTime = frameTime, Loop = loop };
-            int rawFrameWidth = tex.Width / frameCount;
-            int rawFrameHeight = tex.Height;
-            Color[] pixels = new Color[tex.Width * tex.Height];
+
+            int w = tex.Width;
+            int h = tex.Height;
+            Color[] pixels = new Color[w * h];
             tex.GetData(pixels);
 
-            for (int i = 0; i < frameCount; i++)
+            int[] opaquePerColumn = new int[w];
+            for (int x = 0; x < w; x++)
             {
-                int frameX = i * rawFrameWidth;
-                Rectangle full = new(frameX, 0, rawFrameWidth, rawFrameHeight);
-
-                int minX = full.Right, maxX = full.Left - 1, minY = full.Bottom, maxY = full.Top - 1;
-                bool any = false;
-                for (int y = 0; y < full.Height; y++)
+                int count = 0;
+                for (int y = 0; y < h; y++)
                 {
-                    int yGlobal = full.Y + y;
-                    for (int x = 0; x < full.Width; x++)
+                    if (pixels[y * w + x].A > 25)
+                        count++;
+                }
+                opaquePerColumn[x] = count;
+            }
+
+            // Een kolom is "leeg" als er vrijwel geen opaque pixels zijn.
+            const int EMPTY_THRESHOLD = 1;      // <= 1 opaque pixel => scheiding
+            const int MIN_SEG_WIDTH = 8;        // voorkom extreem smalle noise frames
+            List<(int start, int end)> segments = new();
+
+            bool inside = false;
+            int segStart = 0;
+
+            for (int x = 0; x < w; x++)
+            {
+                bool isEmpty = opaquePerColumn[x] <= EMPTY_THRESHOLD;
+                if (!inside && !isEmpty)
+                {
+                    inside = true;
+                    segStart = x;
+                }
+                else if (inside && isEmpty)
+                {
+                    int segEnd = x - 1;
+                    if (segEnd - segStart + 1 >= MIN_SEG_WIDTH)
+                        segments.Add((segStart, segEnd));
+                    inside = false;
+                }
+            }
+            if (inside)
+            {
+                int segEnd = w - 1;
+                if (segEnd - segStart + 1 >= MIN_SEG_WIDTH)
+                    segments.Add((segStart, segEnd));
+            }
+
+            // Fallback indien geen bruikbare segmenten
+            if (segments.Count == 0)
+            {
+                Debug.WriteLine("[WolfAnim] Geen segmenten gevonden -> uniform fallback.");
+                return UniformFallback(tex, expectedFrames, frameTime, loop);
+            }
+
+            // Als we méér of minder segmenten hebben dan verwacht -> fallback (uniform + trim)
+            if (segments.Count != expectedFrames)
+            {
+                Debug.WriteLine($"[WolfAnim] Segment mismatch: found {segments.Count}, expected {expectedFrames} -> uniform fallback.");
+                return UniformFallback(tex, expectedFrames, frameTime, loop);
+            }
+
+            // Trim per segment
+            int baseline = 0;
+            var temp = new List<AnimFrame>();
+
+            foreach (var (start, end) in segments)
+            {
+                int minX = end, maxX = start, minY = h - 1, maxY = 0;
+                bool any = false;
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = start; x <= end; x++)
                     {
-                        int xGlobal = frameX + x;
-                        var c = pixels[yGlobal * tex.Width + xGlobal];
-                        if (c.A > 15)
+                        var c = pixels[y * w + x];
+                        if (c.A > 25)
                         {
                             any = true;
-                            if (xGlobal < minX) minX = xGlobal;
-                            if (xGlobal > maxX) maxX = xGlobal;
-                            if (yGlobal < minY) minY = yGlobal;
-                            if (yGlobal > maxY) maxY = yGlobal;
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
                         }
                     }
                 }
 
                 Rectangle src;
-                Vector2 pivot;
                 if (!any)
                 {
-                    src = full;
-                    pivot = new Vector2(full.Width / 2f, full.Height);
+                    src = new Rectangle(start, 0, end - start + 1, h);
                 }
                 else
                 {
-                    src = new Rectangle(minX, minY, (maxX - minX + 1), (maxY - minY + 1));
-                    pivot = new Vector2(src.Width / 2f, src.Height);
+                    src = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
                 }
 
-                anim.Frames.Add(new AnimFrame { Src = src, Pivot = pivot });
+                var frame = new AnimFrame
+                {
+                    Src = src,
+                    Pivot = new Vector2(src.Width / 2f, src.Height)
+                };
+                temp.Add(frame);
+                if (frame.Pivot.Y > baseline) baseline = (int)frame.Pivot.Y;
             }
+
+            // Baseline normaliseren
+            foreach (var f in temp)
+                f.Pivot = new Vector2(f.Pivot.X, baseline);
+
+            anim.Frames.AddRange(temp);
+            return anim;
+        }
+
+        private Animation UniformFallback(Texture2D tex, int expectedFrames, double frameTime, bool loop)
+        {
+            var anim = new Animation { FrameTime = frameTime, Loop = loop };
+            int w = tex.Width;
+            int h = tex.Height;
+            int slice = w / expectedFrames;
+            if (slice <= 0) slice = w;
+
+            Color[] pixels = new Color[w * h];
+            tex.GetData(pixels);
+
+            int baseline = 0;
+            var temp = new List<AnimFrame>();
+
+            for (int i = 0; i < expectedFrames; i++)
+            {
+                int x0 = i * slice;
+                int width = (i == expectedFrames - 1) ? (w - x0) : slice;
+                if (x0 >= w) break;
+                if (x0 + width > w) width = w - x0;
+
+                Rectangle full = new(x0, 0, width, h);
+
+                // Fine trim binnen slice
+                int minX = full.Right, maxX = full.Left - 1, minY = h - 1, maxY = 0;
+                bool any = false;
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        Color c = pixels[y * w + (x0 + x)];
+                        if (c.A > 25)
+                        {
+                            any = true;
+                            int gx = x0 + x;
+                            if (gx < minX) minX = gx;
+                            if (gx > maxX) maxX = gx;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+
+                Rectangle src = any ? new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1) : full;
+                var frame = new AnimFrame { Src = src, Pivot = new Vector2(src.Width / 2f, src.Height) };
+                temp.Add(frame);
+                if (frame.Pivot.Y > baseline) baseline = (int)frame.Pivot.Y;
+            }
+
+            foreach (var f in temp)
+                f.Pivot = new Vector2(f.Pivot.X, baseline);
+
+            anim.Frames.AddRange(temp);
+            return anim;
+        }
+
+        // ---------- Kat/Hond vaste slicing + trim ----------
+        private Animation BuildAnimationFixedAndTrim(Texture2D tex, int frameCount, double frameTime, bool loop)
+        {
+            var anim = new Animation { FrameTime = frameTime, Loop = loop };
+
+            if (frameCount <= 0) frameCount = 1;
+            int rawFrameWidth = tex.Width / frameCount;
+            if (rawFrameWidth * frameCount != tex.Width)
+            {
+                Debug.WriteLine($"[Enemy] WARNING: width {tex.Width} not divisible by frameCount {frameCount}");
+            }
+            int rawFrameHeight = tex.Height;
+
+            Color[] pixels = new Color[tex.Width * tex.Height];
+            tex.GetData(pixels);
+
+            int baseline = 0;
+            var temp = new List<AnimFrame>();
+
+            for (int i = 0; i < frameCount; i++)
+            {
+                int x0 = i * rawFrameWidth;
+                if (x0 >= tex.Width) break;
+                int w = Math.Min(rawFrameWidth, tex.Width - x0);
+                Rectangle full = new(x0, 0, w, rawFrameHeight);
+
+                int minX = full.Right, maxX = full.Left - 1, minY = full.Bottom - 1, maxY = full.Top;
+                bool any = false;
+                for (int y = 0; y < full.Height; y++)
+                {
+                    int gy = y;
+                    for (int x = 0; x < full.Width; x++)
+                    {
+                        int gx = x0 + x;
+                        var c = pixels[gy * tex.Width + gx];
+                        if (c.A > 15)
+                        {
+                            any = true;
+                            if (gx < minX) minX = gx;
+                            if (gx > maxX) maxX = gx;
+                            if (gy < minY) minY = gy;
+                            if (gy > maxY) maxY = gy;
+                        }
+                    }
+                }
+
+                Rectangle src = any ? new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1) : full;
+                var frame = new AnimFrame
+                {
+                    Src = src,
+                    Pivot = new Vector2(src.Width / 2f, src.Height)
+                };
+                temp.Add(frame);
+                if (frame.Pivot.Y > baseline) baseline = (int)frame.Pivot.Y;
+            }
+
+            foreach (var f in temp)
+                f.Pivot = new Vector2(f.Pivot.X, baseline);
+
+            anim.Frames.AddRange(temp);
             return anim;
         }
 
@@ -177,7 +388,6 @@ namespace ForestQuest.Entities.Enemies
             }
             _collisionWidth = (int)(maxW * _scale);
             _collisionHeight = (int)(maxH * _scale);
-
             if (_feetPos == Vector2.Zero)
                 _feetPos = new Vector2(_collisionWidth * 0.5f, _collisionHeight);
         }
@@ -205,7 +415,7 @@ namespace ForestQuest.Entities.Enemies
         public void Kill()
         {
             if (_isDead) return;
-            ApplyDamage(_health); // gebruikt HP mechaniek
+            ApplyDamage(_health);
         }
 
         public void ApplyDamage(int amount)
