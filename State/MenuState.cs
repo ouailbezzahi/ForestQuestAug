@@ -4,7 +4,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using ForestQuest.State;
-using ForestQuest.World.Background; // NEW
+using ForestQuest.World.Background;
+using ForestQuest.UI; // NEW
 
 namespace ForestQuest.State
 {
@@ -228,37 +229,17 @@ namespace ForestQuest.State
 
                 bool hovered = buttonRect.Contains(mousePos);
                 bool selected = (i == _selectedIndex);
+                bool isDown = hovered && mouse.LeftButton == ButtonState.Pressed;
 
-                Color buttonColor = new Color(60, 60, 60, 200);   // normaal
-                if (hovered && mouse.LeftButton == ButtonState.Pressed)
-                    buttonColor = new Color(30, 30, 30, 220);    // klik
-                else if (hovered)
-                    buttonColor = new Color(40, 40, 40, 210);    // hover
-                else if (selected)
-                    buttonColor = new Color(70, 70, 110, 210);   // keyboard-selected
-
-                // draw filled button
-                spriteBatch.Draw(_pixel, buttonRect, buttonColor);
-
-                // Optional: outline when selected
-                if (selected)
-                {
-                    Color outline = new Color(180, 200, 255, 220);
-                    // top
-                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Y, buttonRect.Width, 2), outline);
-                    // bottom
-                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Bottom - 2, buttonRect.Width, 2), outline);
-                    // left
-                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.X, buttonRect.Y, 2, buttonRect.Height), outline);
-                    // right
-                    spriteBatch.Draw(_pixel, new Rectangle(buttonRect.Right - 2, buttonRect.Y, 2, buttonRect.Height), outline);
-                }
-
-                Vector2 textPos = new Vector2(
-                    buttonRect.X + (buttonRect.Width - textSize.X) / 2,
-                    buttonRect.Y + (buttonRect.Height - textSize.Y) / 2
+                UiDraw.Button(
+                    spriteBatch, _graphicsDevice, buttonRect, _menuOptions[i], _font,
+                    hovered, isDown, selected,
+                    normal: new Color(60, 60, 60, 200),
+                    hover: new Color(40, 40, 40, 210),
+                    down:  new Color(30, 30, 30, 220),
+                    selectedColor: new Color(70, 70, 110, 210),
+                    textColor: Color.White
                 );
-                spriteBatch.DrawString(_font, _menuOptions[i], textPos, Color.White);
 
                 currentY += buttonHeight + (int)spacing;
             }

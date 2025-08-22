@@ -59,7 +59,7 @@ namespace ForestQuest.UI
             float popupY = screenHeight - popupHeight - 40;
 
             // Donkere overlay
-            spriteBatch.Draw(_pixel, new Rectangle(0, 0, (int)screenWidth, (int)screenHeight), Color.Black * 0.35f);
+            UiDraw.Overlay(spriteBatch, graphicsDevice, Color.Black * 0.35f);
 
             // Dialogbox background
             spriteBatch.Draw(_background, new Rectangle((int)popupX, (int)popupY, (int)popupWidth, (int)popupHeight), Color.White * 0.85f);
