@@ -11,6 +11,7 @@ using ForestQuest.UI;
 using ForestQuest.Entities.Enemies;
 using ForestQuest.Entities.Player;
 using System;
+using ForestQuest.World.Camera; // + toegevoegd
 
 namespace ForestQuest.State
 {
@@ -82,6 +83,9 @@ namespace ForestQuest.State
         private SpriteFont _uiFont;
         private Texture2D _pixel;
 
+        // Camera strategy (nieuw)
+        private readonly ICameraStrategy _cameraStrategy = new DynamicSplitCameraStrategy();
+
         private int[,] _backgroundTiles = new int[,]
         {
             { 3,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,5 },
@@ -105,6 +109,7 @@ namespace ForestQuest.State
             { 7,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,7 },
             { 7,2,2,1,1,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
+            { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
             { 7,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,7 },
@@ -581,97 +586,34 @@ namespace ForestQuest.State
                 int mapHeight = _backgroundTiles.GetLength(0) * tileSz;
 
                 Vector2 cam = new(focus.X - vp.Width / 2f, focus.Y - vp.Height / 2f);
-                cam.X = MathHelper.Clamp(cam.X, 0, System.Math.Max(0, mapWidth - vp.Width));
-                cam.Y = MathHelper.Clamp(cam.Y, 0, System.Math.Max(0, mapHeight - vp.Height));
+                cam.X = MathHelper.Clamp(cam.X, 0, Math.Max(0, mapWidth - vp.Width));
+                cam.Y = MathHelper.Clamp(cam.Y, 0, Math.Max(0, mapHeight - vp.Height));
                 return Matrix.CreateTranslation(-cam.X, -cam.Y, 0);
             }
 
-            // Split or single camera
-            if (_isMultiplayer)
+            // Strategy bepaalt views (single/shared/split)
+            Point mapPx = new(_backgroundTiles.GetLength(1) * tileSize, _backgroundTiles.GetLength(0) * tileSize);
+            var views = _cameraStrategy.BuildViews(
+                _graphicsDevice,
+                originalViewport,
+                _player.Center,
+                _isMultiplayer ? _player2.Center : (Vector2?)null,
+                mapPx
+            );
+
+            foreach (var v in views)
             {
-                var vpFull = originalViewport;
-                float distX = System.Math.Abs(_player.Center.X - _player2.Center.X);
-                float distY = System.Math.Abs(_player.Center.Y - _player2.Center.Y);
-
-                // Decide split axis by normalized distance
-                float normX = distX / System.Math.Max(1f, vpFull.Width);
-                float normY = distY / System.Math.Max(1f, vpFull.Height);
-                float threshold = 0.6f;
-
-                if (normX >= normY && normX > threshold)
-                {
-                    // Vertical split (left/right)
-                    var leftWidth = vpFull.Width / 2;
-                    var rightWidth = vpFull.Width - leftWidth;
-
-                    var vpLeft = new Viewport(vpFull.X, vpFull.Y, leftWidth, vpFull.Height);
-                    var vpRight = new Viewport(vpFull.X + leftWidth, vpFull.Y, rightWidth, vpFull.Height);
-
-                    // Left view (P1)
-                    _graphicsDevice.Viewport = vpLeft;
-                    spriteBatch.Begin(transformMatrix: BuildCamera(_player.Center, vpLeft));
-                    DrawWorld(spriteBatch);
-                    spriteBatch.End();
-
-                    // Right view (P2)
-                    _graphicsDevice.Viewport = vpRight;
-                    spriteBatch.Begin(transformMatrix: BuildCamera(_player2.Center, vpRight));
-                    DrawWorld(spriteBatch);
-                    spriteBatch.End();
-
-                    // Vertical separator
-                    _graphicsDevice.Viewport = vpFull;
-                    spriteBatch.Begin();
-                    spriteBatch.Draw(_pixel, new Rectangle(vpLeft.Width - 1, 0, 2, vpFull.Height), Color.Black * 0.75f);
-                    spriteBatch.End();
-                }
-                else if (normY > threshold)
-                {
-                    // Horizontal split (top/bottom)
-                    var topHeight = vpFull.Height / 2;
-                    var bottomHeight = vpFull.Height - topHeight;
-
-                    var vpTop = new Viewport(vpFull.X, vpFull.Y, vpFull.Width, topHeight);
-                    var vpBottom = new Viewport(vpFull.X, vpFull.Y + topHeight, vpFull.Width, bottomHeight);
-
-                    // Top view (P1)
-                    _graphicsDevice.Viewport = vpTop;
-                    spriteBatch.Begin(transformMatrix: BuildCamera(_player.Center, vpTop));
-                    DrawWorld(spriteBatch);
-                    spriteBatch.End();
-
-                    // Bottom view (P2)
-                    _graphicsDevice.Viewport = vpBottom;
-                    spriteBatch.Begin(transformMatrix: BuildCamera(_player2.Center, vpBottom));
-                    DrawWorld(spriteBatch);
-                    spriteBatch.End();
-
-                    // Horizontal separator
-                    _graphicsDevice.Viewport = vpFull;
-                    spriteBatch.Begin();
-                    spriteBatch.Draw(_pixel, new Rectangle(0, vpTop.Height - 1, vpFull.Width, 2), Color.Black * 0.75f);
-                    spriteBatch.End();
-                }
-                else
-                {
-                    // Single shared camera centered between players
-                    Vector2 mid = (_player.Center + _player2.Center) * 0.5f;
-                    _graphicsDevice.Viewport = vpFull;
-                    spriteBatch.Begin(transformMatrix: BuildCamera(mid, vpFull));
-                    DrawWorld(spriteBatch);
-                    spriteBatch.End();
-                }
-
-                // Restore viewport for UI
-                _graphicsDevice.Viewport = originalViewport;
-            }
-            else
-            {
-                // Single player draw
-                spriteBatch.Begin(transformMatrix: BuildCamera(_player.Center, originalViewport));
+                _graphicsDevice.Viewport = v.Viewport;
+                spriteBatch.Begin(transformMatrix: BuildCamera(v.Focus, v.Viewport));
                 DrawWorld(spriteBatch);
                 spriteBatch.End();
             }
+
+            // Herstel viewport en teken eventuele separator
+            _graphicsDevice.Viewport = originalViewport;
+            spriteBatch.Begin();
+            _cameraStrategy.DrawSeparators(spriteBatch, originalViewport, views, _pixel);
+            spriteBatch.End();
 
             // UI (shared)
             spriteBatch.Begin();
